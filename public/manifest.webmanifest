@@ -1,0 +1,19 @@
+{
+  "name": "Neyou Summer Stewardship",
+  "short_name": "Stewardship",
+  "description": "Summer 2026 money stewardship notebook for Neyou.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
