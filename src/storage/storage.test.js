@@ -53,3 +53,50 @@ describe('localStorage persistence', () => {
     expect(loadState()).toBeNull()
   })
 })
+
+// A device's localStorage is whatever it was last saved as - it never
+// updates itself just because the schema grew. These tests simulate a
+// save made before a new top-level field existed (exactly what happened
+// with givingCategories/savingsGoal in Phase 3.1, and crashed two screens
+// in production) and confirm loadState/importStateFromJSON heal it.
+describe('schema migration (healing state saved before a field existed)', () => {
+  it('backfills missing fields without losing the already-saved ledger/approvals/settings', () => {
+    const legacyState = buildSeedState()
+    delete legacyState.givingCategories
+    delete legacyState.savingsGoal
+    // Distinct real data, not just a copy of the seed - proves the old
+    // device's own data survives, not merely that some ledger exists.
+    legacyState.settings = { ...legacyState.settings, weeklyIncomeAmount: 12345 }
+    legacyState.approvals = []
+    saveState(legacyState)
+
+    const defaults = buildSeedState()
+    const healed = loadState(defaults)
+
+    expect(healed.givingCategories).toEqual(defaults.givingCategories)
+    expect(healed.savingsGoal).toEqual(defaults.savingsGoal)
+    expect(healed.ledger).toEqual(legacyState.ledger)
+    expect(healed.approvals).toEqual([])
+    expect(healed.settings.weeklyIncomeAmount).toBe(12345)
+  })
+
+  it('leaves state exactly as saved when no defaults are supplied', () => {
+    const legacyState = buildSeedState()
+    delete legacyState.givingCategories
+    saveState(legacyState)
+
+    expect(loadState().givingCategories).toBeUndefined()
+  })
+
+  it('heals the same way on import as on load', () => {
+    const legacyState = buildSeedState()
+    delete legacyState.savingsGoal
+    const json = JSON.stringify(legacyState)
+
+    const defaults = buildSeedState()
+    const healed = importStateFromJSON(json, defaults)
+
+    expect(healed.savingsGoal).toEqual(defaults.savingsGoal)
+    expect(healed.ledger).toEqual(legacyState.ledger)
+  })
+})
