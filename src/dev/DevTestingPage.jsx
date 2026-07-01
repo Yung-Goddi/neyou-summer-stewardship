@@ -3,11 +3,13 @@ import {
   ACCOUNTS,
   TRANSACTION_TYPES,
   DIRECTIONS,
+  BALANCE_ENFORCED_TYPES,
   dollarsToCents,
   formatCents,
   calculateAllBalances,
   createTransaction,
   validateTransaction,
+  previewNegativeImpact,
   transferBetweenAccounts,
   runWeeklySplit,
   createCorrection,
@@ -33,6 +35,13 @@ const TRANSFER_TYPE_OPTIONS = [
 
 function labelize(value) {
   return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// Warnings are non-blocking (Parent Withdrawal / Correction admin
+// overrides) - the human still has to say "yes, do it anyway."
+function confirmWarnings(warnings) {
+  if (!warnings || warnings.length === 0) return true
+  return window.confirm(`${warnings.join('\n')}\n\nContinue?`)
 }
 
 export default function DevTestingPage() {
@@ -136,15 +145,27 @@ export default function DevTestingPage() {
               fail(new Error(check.errors.join(' ')))
               return
             }
+            if (!confirmWarnings(check.warnings)) return
             commit(entry, `Added ${labelize(entry.type)} entry to ${entry.account}.`)
           }}
           onError={fail}
         />
 
         <TransferForm
-          ledger={state.ledger}
           operators={state.operators}
           onSubmit={(params) => {
+            const impact = previewNegativeImpact(state.ledger, {
+              account: params.fromAccount,
+              direction: DIRECTIONS.OUT,
+              amount: params.amount,
+            })
+            if (impact && !BALANCE_ENFORCED_TYPES.includes(params.type)) {
+              const warned = confirmWarnings([
+                `This takes ${labelize(impact.account)} from ${formatCents(impact.currentBalance)} to ` +
+                  `${formatCents(impact.resultingBalance)}. Confirm this is an intentional admin override.`,
+              ])
+              if (!warned) return
+            }
             const pair = transferBetweenAccounts({ ledger: state.ledger, ...params })
             commit(pair, `Transferred ${formatCents(params.amount)} from ${params.fromAccount} to ${params.toAccount}.`)
           }}
@@ -165,6 +186,8 @@ export default function DevTestingPage() {
           operators={state.operators}
           onSubmit={(params) => {
             const entry = createCorrection(params)
+            const check = validateTransaction(state.ledger, entry)
+            if (!confirmWarnings(check.warnings)) return
             commit(entry, `Correction posted to ${params.account}.`)
           }}
           onError={fail}

@@ -46,9 +46,27 @@ src/
   Income, Achievement Reward, Parent Bonus, Parent Deposit, Parent
   Withdrawal) is a linked pair of ledger entries — one `out` leg and one
   `in` leg sharing a `transferId` — so the ledger always shows both sides.
+- **Negative balances are blocked for child-facing spending, never for
+  parent overrides.** Spend, Save Transfer, Giving, Weekly Income,
+  Achievement Reward, and Parent Bonus can never take Spend/Save/Give
+  below zero — `transferBetweenAccounts` throws. Parent Withdrawal and
+  Correction are administrative overrides: they're allowed to go negative,
+  but `validateTransaction` returns a non-blocking warning
+  (`previewNegativeImpact`) so the UI can ask a human to confirm first.
 
 See `src/dev/DevTestingPage.jsx` for a working example of every engine
 function in use.
+
+## Tests
+
+```bash
+npm test
+```
+
+30 Vitest tests cover integer cents math, exact weekly-split summing,
+linked transfer pairs, negative-balance blocking vs. warning behavior,
+correction reason enforcement, export/import round-tripping, and Future
+account snapshot semantics (latest value wins, snapshots don't sum).
 
 ## Deployment (Netlify)
 
