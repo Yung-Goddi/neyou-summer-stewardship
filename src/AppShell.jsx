@@ -13,6 +13,16 @@ import { buildSeedState } from './data/seed.js'
 import ParentApp from './parent/ParentApp.jsx'
 import ChildApp from './child/ChildApp.jsx'
 
+// A device's localStorage can predate fields the schema has since grown
+// (e.g. Phase 3.1 added givingCategories/savingsGoal) - loadState() has no
+// way to know that on its own, it just returns whatever was saved. Missing
+// top-level keys backfill from the seed defaults here, once, wherever
+// state enters the app; the device's real data always wins for any key it
+// actually has.
+function withDefaults(loadedState) {
+  return { ...buildSeedState(), ...loadedState }
+}
+
 // Owns the one root state object and everything that touches it, so
 // switching between the child screens and the (PIN-gated) parent
 // dashboard never risks seeing stale data - both read from and write to
@@ -24,7 +34,8 @@ export default function AppShell() {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    setState(loadState() ?? buildSeedState())
+    const loaded = loadState()
+    setState(loaded ? withDefaults(loaded) : buildSeedState())
   }, [])
 
   useEffect(() => {
@@ -104,7 +115,7 @@ export default function AppShell() {
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const imported = importStateFromJSON(reader.result)
+        const imported = withDefaults(importStateFromJSON(reader.result))
         setState(imported)
         saveState(imported)
         setMessage({ tone: 'success', text: 'Imported state and saved it.' })
