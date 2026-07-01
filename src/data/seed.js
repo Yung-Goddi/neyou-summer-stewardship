@@ -4,7 +4,12 @@ import { runWeeklySplit } from '../engine/weeklySplit.js'
 import { transferBetweenAccounts } from '../engine/transfer.js'
 import { createCorrection } from '../engine/correction.js'
 import { createFutureSnapshot } from '../engine/futureSnapshot.js'
+import { createApprovalEvent, APPROVAL_KINDS, APPROVAL_STATUSES } from '../engine/approvals.js'
 import { CURRENT_VERSION } from '../storage/storage.js'
+
+// SHA-256 of "1234" - a placeholder default PIN, meant to be changed in
+// Manage/Config before this ever leaves a dev machine.
+const DEFAULT_PARENT_PIN_HASH = '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4'
 
 export const SEED_SETTINGS = {
   currency: 'USD',
@@ -12,10 +17,12 @@ export const SEED_SETTINGS = {
   summerEnd: '2026-08-15',
   splitPercentages: { spend: 60, save: 30, give: 10 },
   weeklyIncomeAmount: 1000, // $10.00, in cents
+  parentPinHash: DEFAULT_PARENT_PIN_HASH,
 }
 
 export const SEED_OPERATORS = [
-  { id: 'op_parent', name: 'Mom', role: 'parent' },
+  { id: 'op_dad', name: 'Dad', role: 'parent' },
+  { id: 'op_mom', name: 'Mom', role: 'parent' },
   { id: 'op_child', name: 'Neyou', role: 'child' },
 ]
 
@@ -37,6 +44,7 @@ export function buildSeedLedger() {
   let ledger = []
   const commit = (entries) => {
     ledger = [...ledger, ...(Array.isArray(entries) ? entries : [entries])]
+    return entries
   }
 
   commit(
@@ -44,20 +52,20 @@ export function buildSeedLedger() {
       ledger,
       totalAmount: SEED_SETTINGS.weeklyIncomeAmount,
       splitPercentages: SEED_SETTINGS.splitPercentages,
-      approvedBy: 'op_parent',
+      approvedBy: 'op_dad',
       notes: 'Week 1 weekly income split',
       timestamp: '2026-06-01T09:00:00.000Z',
     })
   )
 
-  commit(
+  const achievementReward = commit(
     transferBetweenAccounts({
       ledger,
       type: TRANSACTION_TYPES.ACHIEVEMENT_REWARD,
       fromAccount: ACCOUNTS.EXTERNAL,
       toAccount: ACCOUNTS.SPEND,
       amount: 200,
-      approvedBy: 'op_parent',
+      approvedBy: 'op_dad',
       notes: 'Achievement: First $2.00 saved',
       timestamp: '2026-06-03T18:00:00.000Z',
     })
@@ -82,7 +90,7 @@ export function buildSeedLedger() {
       direction: DIRECTIONS.IN,
       amount: 100,
       reason: 'Ice cream shop rang up the wrong price, refunded $1.00',
-      approvedBy: 'op_parent',
+      approvedBy: 'op_mom',
       timestamp: '2026-06-06T09:00:00.000Z',
     })
   )
@@ -107,7 +115,7 @@ export function buildSeedLedger() {
       fromAccount: ACCOUNTS.EXTERNAL,
       toAccount: ACCOUNTS.SAVE,
       amount: 1000,
-      approvedBy: 'op_parent',
+      approvedBy: 'op_mom',
       notes: 'Birthday gift from Grandma',
       timestamp: '2026-06-10T12:00:00.000Z',
     })
@@ -118,7 +126,7 @@ export function buildSeedLedger() {
       ledger,
       totalAmount: SEED_SETTINGS.weeklyIncomeAmount,
       splitPercentages: SEED_SETTINGS.splitPercentages,
-      approvedBy: 'op_parent',
+      approvedBy: 'op_dad',
       notes: 'Week 2 weekly income split',
       timestamp: '2026-06-08T09:00:00.000Z',
     })
@@ -128,21 +136,50 @@ export function buildSeedLedger() {
     createFutureSnapshot({
       amount: 500000, // $5,000.00 custodial account statement balance
       notes: 'Custodial account statement balance, June 2026',
-      approvedBy: 'op_parent',
+      approvedBy: 'op_dad',
       timestamp: '2026-06-15T00:00:00.000Z',
     })
   )
 
-  return ledger
+  return { ledger, achievementRewardTransferId: achievementReward[0].transferId }
+}
+
+// A couple of approval events so the Approvals screen has something to
+// show out of the box: one responsibility approved with no money attached,
+// and the achievement approval linked (via transferId) to the reward
+// transfer created above.
+function buildSeedApprovals(achievementRewardTransferId) {
+  return [
+    createApprovalEvent({
+      kind: APPROVAL_KINDS.RESPONSIBILITY,
+      itemId: 'resp_dishes',
+      status: APPROVAL_STATUSES.APPROVED,
+      date: '2026-06-03',
+      approvedBy: 'op_dad',
+      timestamp: '2026-06-03T19:30:00.000Z',
+    }),
+    createApprovalEvent({
+      kind: APPROVAL_KINDS.ACHIEVEMENT,
+      itemId: 'ach_first_save',
+      status: APPROVAL_STATUSES.APPROVED,
+      date: '2026-06-03',
+      approvedBy: 'op_dad',
+      transferId: achievementRewardTransferId,
+      notes: 'Reward posted to Spend',
+      timestamp: '2026-06-03T18:00:00.000Z',
+    }),
+  ]
 }
 
 export function buildSeedState() {
+  const { ledger, achievementRewardTransferId } = buildSeedLedger()
   return {
     version: CURRENT_VERSION,
     settings: SEED_SETTINGS,
     operators: SEED_OPERATORS,
     responsibilities: SEED_RESPONSIBILITIES,
     achievements: SEED_ACHIEVEMENTS,
-    ledger: buildSeedLedger(),
+    approvals: buildSeedApprovals(achievementRewardTransferId),
+    ledger,
   }
 }

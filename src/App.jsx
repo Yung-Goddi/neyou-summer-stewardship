@@ -1,10 +1,11 @@
-import DevTestingPage from './dev/DevTestingPage.jsx'
+import ParentApp from './parent/ParentApp.jsx'
 
-// Phase 1 stops here: this renders only the developer testing page so the
-// engine can be proven out before any real UI (Parent Dashboard, child
-// experience, navigation, etc.) is built.
+// Phase 2: the Parent Dashboard (PIN gate, operator picker, approvals,
+// money actions, Future snapshot, manage/config). No child-facing UI yet -
+// see src/dev/DevTestingPage.jsx for the raw engine testing screen this
+// replaced as the default view.
 function App() {
-  return <DevTestingPage />
+  return <ParentApp />
 }
 
 export default App

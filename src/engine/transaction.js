@@ -1,16 +1,7 @@
 import { isValidAccount } from './accounts.js'
 import { TRANSACTION_TYPES, DIRECTIONS } from './transactionTypes.js'
 import { assertCents } from './money.js'
-
-let sequence = 0
-
-// Ids only need to be unique within this device's ledger, so a timestamp +
-// incrementing counter + short random suffix is enough (no UUID dependency).
-function generateId(prefix) {
-  sequence += 1
-  const random = Math.random().toString(36).slice(2, 8)
-  return `${prefix}_${Date.now().toString(36)}_${sequence}_${random}`
-}
+import { generateId } from './id.js'
 
 // Builds one immutable ledger entry. This is the only place entries get
 // created, so every validation rule for a single entry lives here.
