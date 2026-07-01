@@ -5,6 +5,7 @@ import {
   getApprovalStatus,
   getApprovalsForDate,
   getLatestEventsForKind,
+  hasEverBeenApproved,
   APPROVAL_KINDS,
   APPROVAL_STATUSES,
 } from './approvals.js'
@@ -152,6 +153,88 @@ describe('approvals', () => {
       })
       const approvals = appendToApprovals([], responsibility)
       expect(getLatestEventsForKind(approvals, APPROVAL_KINDS.MONEY_REQUEST)).toEqual([])
+    })
+  })
+
+  describe('withdrawal (child undo before a parent acts)', () => {
+    it('lets a pending event be superseded by a withdrawn one', () => {
+      const pending = createApprovalEvent({
+        kind: APPROVAL_KINDS.RESPONSIBILITY,
+        itemId: 'resp_feed_dog',
+        status: APPROVAL_STATUSES.PENDING,
+        date: '2026-07-01',
+        timestamp: '2026-07-01T08:00:00.000Z',
+      })
+      const withdrawn = createApprovalEvent({
+        kind: APPROVAL_KINDS.RESPONSIBILITY,
+        itemId: 'resp_feed_dog',
+        status: APPROVAL_STATUSES.WITHDRAWN,
+        date: '2026-07-01',
+        timestamp: '2026-07-01T08:01:00.000Z',
+      })
+      const approvals = appendToApprovals(appendToApprovals([], pending), withdrawn)
+      expect(getApprovalStatus(approvals, APPROVAL_KINDS.RESPONSIBILITY, 'resp_feed_dog', '2026-07-01')).toBe(
+        'withdrawn'
+      )
+    })
+
+    it('does not erase the original pending event - both stay in the log', () => {
+      const pending = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.PENDING,
+        date: '2026-07-01',
+      })
+      const withdrawn = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.WITHDRAWN,
+        date: '2026-07-01',
+      })
+      const approvals = appendToApprovals(appendToApprovals([], pending), withdrawn)
+      expect(approvals).toHaveLength(2)
+    })
+
+    it('excludes withdrawn requests from the pending list a parent would act on', () => {
+      const pending = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.PENDING,
+        date: '2026-07-01',
+        timestamp: '2026-07-01T08:00:00.000Z',
+      })
+      const withdrawn = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.WITHDRAWN,
+        date: '2026-07-01',
+        timestamp: '2026-07-01T08:01:00.000Z',
+      })
+      const approvals = appendToApprovals(appendToApprovals([], pending), withdrawn)
+      const stillPending = getLatestEventsForKind(approvals, APPROVAL_KINDS.MONEY_REQUEST).filter(
+        (e) => e.status === APPROVAL_STATUSES.PENDING
+      )
+      expect(stillPending).toHaveLength(0)
+    })
+  })
+
+  describe('hasEverBeenApproved', () => {
+    it('is true once approved on any day, unlike the date-scoped status', () => {
+      const approved = createApprovalEvent({
+        kind: APPROVAL_KINDS.ACHIEVEMENT,
+        itemId: 'ach_reader',
+        status: APPROVAL_STATUSES.APPROVED,
+        date: '2026-06-15',
+      })
+      const approvals = appendToApprovals([], approved)
+      expect(hasEverBeenApproved(approvals, APPROVAL_KINDS.ACHIEVEMENT, 'ach_reader')).toBe(true)
+      // A badge earned in June stays earned in August, unlike the daily
+      // per-date status a responsibility check-off would use.
+      expect(getApprovalStatus(approvals, APPROVAL_KINDS.ACHIEVEMENT, 'ach_reader', '2026-08-01')).toBe('none')
+    })
+
+    it('is false when nothing has ever been approved', () => {
+      expect(hasEverBeenApproved([], APPROVAL_KINDS.ACHIEVEMENT, 'ach_reader')).toBe(false)
     })
   })
 })

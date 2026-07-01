@@ -161,6 +161,7 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
                   <div>
                     <div className="font-medium">
                       {labelize(request.payload.type)} - {formatCents(request.payload.amount)}
+                      {request.payload.category && ` (${request.payload.category})`}
                     </div>
                     <div className="text-slate-400 text-xs">
                       {operatorName(state, request.approvedBy)} · {request.notes || 'no note'} ·{' '}
@@ -222,7 +223,7 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
                     </button>
                   </div>
                 )}
-                {(status === 'none' || status === 'rejected') && (
+                {['none', 'rejected', 'withdrawn'].includes(status) && (
                   <button className={buttonClass} onClick={() => approveResponsibility(item)}>
                     Mark Done & Approve
                   </button>
@@ -257,7 +258,7 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
                     </button>
                   </div>
                 )}
-                {(status === 'none' || status === 'rejected') && (
+                {['none', 'rejected', 'withdrawn'].includes(status) && (
                   <button className={buttonClass} onClick={() => approveAchievement(item)}>
                     Approve{item.rewardCents > 0 ? ' & Pay Reward' : ''}
                   </button>

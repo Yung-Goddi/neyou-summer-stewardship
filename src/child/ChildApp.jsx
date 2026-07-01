@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ChildHome from './ChildHome.jsx'
 import MoneyRequestScreen from './MoneyRequestScreen.jsx'
 import TasksScreen from './TasksScreen.jsx'
+import BadgesScreen from './BadgesScreen.jsx'
 
 // Only one child operator exists in the seed data today, so there's no
 // picker here the way the parent side has Dad/Mom - the app just finds
@@ -25,12 +26,16 @@ export default function ChildApp({ state, onSwitchToParent, ...shared }) {
   if (view.name === 'tasks') {
     return <TasksScreen {...screenProps} />
   }
+  if (view.name === 'badges') {
+    return <BadgesScreen {...screenProps} />
+  }
 
   return (
     <ChildHome
       {...screenProps}
       onRequestMoney={(requestType) => setView({ name: 'request', requestType })}
       onOpenTasks={() => setView({ name: 'tasks' })}
+      onOpenBadges={() => setView({ name: 'badges' })}
       onSwitchToParent={onSwitchToParent}
     />
   )

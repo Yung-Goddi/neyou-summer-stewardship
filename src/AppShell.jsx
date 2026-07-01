@@ -76,6 +76,16 @@ export default function AppShell() {
     if (successMessage) setMessage({ tone: 'success', text: successMessage })
   }
 
+  function updateGivingCategories(givingCategories, successMessage) {
+    setState((prev) => ({ ...prev, givingCategories }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
+  function updateSavingsGoal(savingsGoal, successMessage) {
+    setState((prev) => ({ ...prev, savingsGoal }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
   function handleExport() {
     const json = exportStateToJSON(state)
     const blob = new Blob([json], { type: 'application/json' })
@@ -140,6 +150,8 @@ export default function AppShell() {
     updateOperators,
     updateResponsibilities,
     updateAchievements,
+    updateGivingCategories,
+    updateSavingsGoal,
     onError: fail,
   }
 

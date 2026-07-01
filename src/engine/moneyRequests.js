@@ -33,6 +33,7 @@ export function createMoneyRequest({
   type,
   amount,
   notes = '',
+  category = null,
   requestedBy = null,
   timestamp = new Date().toISOString(),
 }) {
@@ -53,6 +54,9 @@ export function createMoneyRequest({
     notes,
     approvedBy: requestedBy,
     timestamp,
-    payload: { type, amount, fromAccount, toAccount },
+    // category is only meaningful for Giving requests (who/what it's
+    // going to - Church, Charity, a friend...), but there's no harm in
+    // carrying it as null for the other two types.
+    payload: { type, amount, fromAccount, toAccount, category },
   })
 }

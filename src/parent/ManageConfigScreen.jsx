@@ -6,12 +6,22 @@ function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
 }
 
+// inputClass bakes in `w-full`, which is exactly what you want for a
+// standalone field but fights `flex-1`/`w-20` when several inputs need to
+// share one row - Tailwind resolves conflicting width utilities by their
+// order in the generated stylesheet, not by className string order, so
+// `w-full` can silently win even when it's written first. Stripping it
+// here lets the row-specific width class actually take effect.
+const rowInputClass = inputClass.replace('w-full', 'min-w-0')
+
 export default function ManageConfigScreen({
   state,
   updateSettings,
   updateOperators,
   updateResponsibilities,
   updateAchievements,
+  updateGivingCategories,
+  updateSavingsGoal,
   onError,
   onExport,
   onImportClick,
@@ -52,12 +62,25 @@ export default function ManageConfigScreen({
         idPrefix="ach"
         items={state.achievements}
         columns={[
+          { key: 'icon', label: 'Icon (emoji)', type: 'text', narrow: true },
           { key: 'title', label: 'Title', type: 'text' },
+          { key: 'description', label: 'Description', type: 'text' },
           { key: 'rewardCents', label: 'Reward ($)', type: 'money' },
         ]}
-        defaults={{ title: '', rewardCents: '0.00' }}
+        defaults={{ icon: '🏅', title: '', description: '', rewardCents: '0.00' }}
         onSave={(items) => updateAchievements(items, 'Achievements updated.')}
       />
+
+      <ListEditorCard
+        title="Giving Categories"
+        idPrefix="give"
+        items={state.givingCategories}
+        columns={[{ key: 'label', label: 'Name', type: 'text' }]}
+        defaults={{ label: '' }}
+        onSave={(items) => updateGivingCategories(items, 'Giving categories updated.')}
+      />
+
+      <SavingsGoalCard goal={state.savingsGoal} updateSavingsGoal={updateSavingsGoal} onError={onError} />
 
       <ChangePinCard settings={state.settings} updateSettings={updateSettings} onError={onError} />
 
@@ -137,6 +160,56 @@ function SettingsCard({ settings, updateSettings, onError }) {
   )
 }
 
+// Only one active goal in Summer V1 - "current" progress is always the
+// live Save balance (see ChildHome.jsx), so this form only ever needs to
+// capture the title and the target.
+function SavingsGoalCard({ goal, updateSavingsGoal, onError }) {
+  const [title, setTitle] = useState(goal?.title ?? '')
+  const [target, setTarget] = useState(goal ? String(goal.targetCents / 100) : '')
+
+  function submit(e) {
+    e.preventDefault()
+    try {
+      if (!title.trim()) {
+        onError(new Error('Give the goal a name.'))
+        return
+      }
+      updateSavingsGoal({ title: title.trim(), targetCents: dollarsToCents(target || '0') }, 'Savings goal saved.')
+    } catch (error) {
+      onError(error)
+    }
+  }
+
+  function clearGoal() {
+    updateSavingsGoal(null, 'Savings goal cleared.')
+    setTitle('')
+    setTarget('')
+  }
+
+  return (
+    <Card title="Savings Goal">
+      <form className="space-y-3" onSubmit={submit}>
+        <Field label="Goal name">
+          <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Nintendo Game" />
+        </Field>
+        <Field label="Target ($)">
+          <input className={inputClass} value={target} onChange={(e) => setTarget(e.target.value)} placeholder="60.00" />
+        </Field>
+        <div className="flex gap-3">
+          <button className={buttonClass} type="submit">
+            Save Goal
+          </button>
+          {goal && (
+            <button type="button" className={dangerButtonClass} onClick={clearGoal}>
+              Clear Goal
+            </button>
+          )}
+        </div>
+      </form>
+    </Card>
+  )
+}
+
 // Draft rows always store money columns as dollar strings (matching what
 // the input displays), never as cents - that keeps a freshly-loaded,
 // never-touched row and a hand-edited row in the same shape, so save()
@@ -184,7 +257,7 @@ function ListEditorCard({ title, idPrefix, items, columns, defaults, onSave }) {
             {columns.map((col) => (
               <input
                 key={col.key}
-                className={`${inputClass} flex-1`}
+                className={`${rowInputClass} ${col.narrow ? 'w-20 shrink-0' : 'flex-1'}`}
                 list={col.type === 'select' ? `${idPrefix}-${col.key}-options` : undefined}
                 value={item[col.key]}
                 onChange={(e) => updateField(index, col.key, e.target.value)}

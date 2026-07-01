@@ -27,6 +27,11 @@ export const APPROVAL_STATUSES = Object.freeze({
   PENDING: 'pending',
   APPROVED: 'approved',
   REJECTED: 'rejected',
+  // The child pulled back a 'pending' submission before a parent acted on
+  // it - like recalling an email before it's read. Once a parent has
+  // appended 'approved' or 'rejected', that's final; withdrawal is only
+  // ever valid as a response to the child's own still-pending event.
+  WITHDRAWN: 'withdrawn',
 })
 
 // Builds one immutable approval event.
@@ -122,4 +127,14 @@ export function getLatestEventsForKind(approvals, kind) {
       }
     })
   return [...latestByItem.values()]
+}
+
+// Unlike getApprovalStatus (scoped to one specific day), this asks "has
+// this ever been approved, on any day?" - the right question for a badge:
+// an achievement earned once in June stays earned in August, it doesn't
+// reset the way a daily responsibility check-off does.
+export function hasEverBeenApproved(approvals, kind, itemId) {
+  return approvals.some(
+    (event) => event.kind === kind && event.itemId === itemId && event.status === APPROVAL_STATUSES.APPROVED
+  )
 }

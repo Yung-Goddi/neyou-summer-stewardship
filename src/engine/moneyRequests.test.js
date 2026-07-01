@@ -40,7 +40,13 @@ describe('createMoneyRequest', () => {
       amount: 100,
       fromAccount: ACCOUNTS.GIVE,
       toAccount: ACCOUNTS.EXTERNAL,
+      category: null,
     })
+  })
+
+  it('carries a giving category in the payload when provided', () => {
+    const request = createMoneyRequest({ type: TRANSACTION_TYPES.GIVING, amount: 500, category: 'Church' })
+    expect(request.payload.category).toBe('Church')
   })
 
   it('rejects an unrequestable type', () => {

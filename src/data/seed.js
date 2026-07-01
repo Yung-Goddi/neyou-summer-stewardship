@@ -28,15 +28,50 @@ export const SEED_OPERATORS = [
 ]
 
 export const SEED_RESPONSIBILITIES = [
-  { id: 'resp_dishes', title: 'Dishes after dinner', frequency: 'daily' },
-  { id: 'resp_room', title: 'Make bed & tidy room', frequency: 'daily' },
-  { id: 'resp_trash', title: 'Take out the trash', frequency: 'weekly' },
+  { id: 'resp_feed_dog', title: 'Feed the dog', frequency: 'daily' },
+  { id: 'resp_wash_dishes', title: 'Wash dishes she uses', frequency: 'daily' },
+  { id: 'resp_clean_area', title: 'Clean her area', frequency: 'daily' },
+  { id: 'resp_hygiene', title: 'Wash face/body after waking', frequency: 'daily' },
+  { id: 'resp_breakfast', title: 'Eat breakfast before tablet', frequency: 'daily' },
+  { id: 'resp_family_task', title: 'One family task', frequency: 'daily' },
+  { id: 'resp_deep_clean', title: 'Bigger cleaning with Mom', frequency: 'weekly' },
 ]
 
+// icon/description are what turns an achievement into a badge on the
+// Badges screen - see src/child/BadgesScreen.jsx.
 export const SEED_ACHIEVEMENTS = [
-  { id: 'ach_first_save', title: 'First $2.00 saved', rewardCents: 200 },
-  { id: 'ach_full_week', title: 'Full week of responsibilities done', rewardCents: 300 },
+  {
+    id: 'ach_first_save',
+    title: 'First $2.00 saved',
+    description: 'Save your first $2.00 toward a goal.',
+    icon: '💰',
+    rewardCents: 200,
+  },
+  {
+    id: 'ach_full_week',
+    title: 'Full Week Star',
+    description: 'Complete every responsibility for a full week.',
+    icon: '🌟',
+    rewardCents: 300,
+  },
 ]
+
+export const SEED_GIVING_CATEGORIES = [
+  { id: 'give_church', label: 'Church' },
+  { id: 'give_charity', label: 'Charity' },
+  { id: 'give_someone_in_need', label: 'Someone in need' },
+  { id: 'give_friend', label: 'Friend' },
+  { id: 'give_family', label: 'Family' },
+  { id: 'give_other', label: 'Other' },
+]
+
+// Only one active goal in Summer V1 - "current" progress is always the
+// live Save balance, never a separately tracked number, so it can never
+// drift out of sync with the ledger. See ChildHome.jsx.
+export const SEED_SAVINGS_GOAL = {
+  title: 'Nintendo Game',
+  targetCents: 6000, // $60.00
+}
 
 // Builds a small, believable stretch of ledger history by calling the real
 // engine functions (not hand-authored entries), so importing this seed also
@@ -157,7 +192,7 @@ function buildSeedApprovals(achievementRewardTransferId) {
   return [
     createApprovalEvent({
       kind: APPROVAL_KINDS.RESPONSIBILITY,
-      itemId: 'resp_dishes',
+      itemId: 'resp_wash_dishes',
       status: APPROVAL_STATUSES.APPROVED,
       date: '2026-06-03',
       approvedBy: 'op_dad',
@@ -175,11 +210,11 @@ function buildSeedApprovals(achievementRewardTransferId) {
     }),
     createApprovalEvent({
       kind: APPROVAL_KINDS.RESPONSIBILITY,
-      itemId: 'resp_trash',
+      itemId: 'resp_feed_dog',
       status: APPROVAL_STATUSES.PENDING,
       date: today,
       approvedBy: 'op_child',
-      notes: 'Take out the trash',
+      notes: 'Feed the dog',
     }),
     createMoneyRequest({
       type: TRANSACTION_TYPES.SPEND,
@@ -198,6 +233,8 @@ export function buildSeedState() {
     operators: SEED_OPERATORS,
     responsibilities: SEED_RESPONSIBILITIES,
     achievements: SEED_ACHIEVEMENTS,
+    givingCategories: SEED_GIVING_CATEGORIES,
+    savingsGoal: SEED_SAVINGS_GOAL,
     approvals: buildSeedApprovals(achievementRewardTransferId),
     ledger,
   }
