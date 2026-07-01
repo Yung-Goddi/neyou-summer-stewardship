@@ -1,11 +1,12 @@
 # Neyou Summer Stewardship System
 
 A Summer 2026 money stewardship notebook. Single device, no backend — a
-trustworthy ledger engine plus a PIN-gated Parent Dashboard on top of it.
+trustworthy ledger engine, a kid-friendly home screen, and a PIN-gated
+Parent Dashboard sharing one live state.
 
-Phase 0 (project scaffold), Phase 1 (stewardship engine), and Phase 2
-(Parent Dashboard) are complete. The child-facing experience,
-badges/gamification, and money-practice UI are intentionally not built yet.
+Phase 0 (project scaffold), Phase 1 (stewardship engine), Phase 2 (Parent
+Dashboard), and Phase 3 (child UI) are complete. Badges/gamification and
+money-practice/education screens are intentionally not built yet.
 
 ## Stack
 
@@ -23,8 +24,9 @@ npm run build    # production build to dist/
 npm run preview  # serve the production build locally
 ```
 
-Default parent PIN in the seed data is **1234** — change it under
-Manage → Change Parent PIN before real use.
+The app opens on the child home screen (no PIN). Default parent PIN in
+the seed data is **1234** — change it under Manage → Change Parent PIN
+before real use.
 
 ## Project structure
 
@@ -35,7 +37,9 @@ src/
   data/       Seed data for development/testing
   dev/        Legacy raw engine testing screen (not part of the app flow)
   parent/     Parent Dashboard: PIN gate, operator picker, and five screens
-  App.jsx     Renders ParentApp (src/parent/ParentApp.jsx)
+  child/      Child home screen, money requests, task submission
+  AppShell.jsx  Owns root state; switches between child and parent modes
+  App.jsx     Renders AppShell
 ```
 
 ## The engine (`src/engine`)
@@ -60,27 +64,53 @@ src/
 - **Approvals are also an append-only log** (`src/engine/approvals.js`),
   mirroring the ledger's own design: "approving" something appends a new
   event rather than editing a row, and the current status is always the
-  latest event for a given `(kind, itemId, date)`. Phase 2's parent
-  self-serve flow appends straight to `'approved'`; a future child
-  submission flow would append `'pending'` first — same mechanism either
-  way. Approving an achievement with a reward auto-posts the Achievement
+  latest event for a given `(kind, itemId, date)`. A parent's self-serve
+  flow (no child involved) appends straight to `'approved'`; the child UI
+  appends `'pending'` first — same mechanism, same screen acts on either.
+  Approving an achievement with a reward auto-posts the Achievement
   Reward transfer and links it back via `transferId`.
+- **Money requests** (`src/engine/moneyRequests.js`) are how a child asks
+  to Spend, Save Transfer, or Give: `createMoneyRequest` only ever
+  appends a `'pending'` approval event (`kind: 'money_request'`) with the
+  request's type/amount/route in its `payload` - nothing moves in the
+  ledger until a parent approves it, which is what actually calls
+  `transferBetweenAccounts` (so the usual negative-balance protection
+  still applies at that moment, even if the balance changed since the
+  request was made).
 - **PIN is a soft deterrent, not real security** (`src/engine/pin.js`): one
   shared PIN, SHA-256 hashed before storage, no salt or rate limiting.
   Picking Dad/Mom after unlocking doesn't authenticate anything - it just
-  sets who shows up in `approvedBy`.
+  sets who shows up in `approvedBy`. The child side has no PIN at all.
 
 See `src/dev/DevTestingPage.jsx` for a working example of every core money
-engine function in use, and `src/parent/ParentApp.jsx` for how the real UI
-wires the same engine functions together.
+engine function in use, and `src/AppShell.jsx` for how the real UI wires
+the same engine functions together for both the child and parent sides.
 
-## The Parent Dashboard (`src/parent`)
+## The app (`src/AppShell.jsx`)
+
+Owns the one root state object and switches between two modes that share
+it live - nothing goes stale moving between them:
+
+**Child mode (default, no PIN)** — `src/child`
+- **Home** — balances, big colorful Spend/Save/Give request buttons, an
+  "I Did My Jobs Today!" button, and a list of what's still waiting for
+  approval
+- **Money request** — shared screen for Spend/Save Transfer/Giving;
+  submitting only appends a pending approval event, never touches the
+  ledger directly
+- **Tasks** — mark today's responsibilities/achievements done (also just
+  appends a pending approval event)
+- A small link at the bottom switches to the Parent Dashboard
+
+**Parent mode (PIN gated)** — `src/parent`
 
 PIN gate → operator picker (Dad/Mom) → tabbed dashboard:
 
 - **Dashboard** — balances, open-approvals count for today, recent activity
-- **Approvals** — mark responsibilities/achievements done for a given date;
-  achievement approval posts the reward automatically
+- **Approvals** — a Money Requests section for anything a child asked to
+  spend/save/give (Approve posts the real ledger transfer; Reject just
+  logs it), plus responsibilities/achievements showing none/pending/
+  approved per day - pending items show "waiting on you" with Approve/Reject
 - **Money** — weekly split, parent bonus, parent deposit, parent
   withdrawal (warns before overdrawing), record-a-real-world-transaction,
   correction
@@ -88,7 +118,7 @@ PIN gate → operator picker (Dad/Mom) → tabbed dashboard:
 - **Manage** — settings, operator/responsibility/achievement editors,
   change PIN, export/import/reset
 
-No child-facing UI exists yet.
+No badges/gamification or money-practice/education screens yet.
 
 ## Tests
 
@@ -96,10 +126,12 @@ No child-facing UI exists yet.
 npm test
 ```
 
-38 Vitest tests cover integer cents math, exact weekly-split summing,
+56 Vitest tests cover integer cents math, exact weekly-split summing,
 linked transfer pairs, negative-balance blocking vs. warning behavior,
 correction reason enforcement, export/import round-tripping, Future
-account snapshot semantics, the approvals append-only log, and PIN hashing.
+account snapshot semantics, the approvals append-only log (including the
+money-request payload and kind-wide latest-event lookup), money request
+creation/routing, and PIN hashing.
 
 ## Deployment (Netlify)
 
