@@ -5,8 +5,10 @@ trustworthy ledger engine, a kid-friendly home screen, and a PIN-gated
 Parent Dashboard sharing one live state.
 
 Phase 0 (project scaffold), Phase 1 (stewardship engine), Phase 2 (Parent
-Dashboard), and Phase 3 (child UI) are complete. Badges/gamification and
-money-practice/education screens are intentionally not built yet.
+Dashboard), Phase 3 (child UI), and Phase 3.1 (usability refinements -
+undo, savings goal, badge gallery, real responsibilities, giving
+categories, warmer styling) are complete. Money-practice/education
+screens are intentionally not built yet.
 
 ## Stack
 
@@ -92,14 +94,20 @@ Owns the one root state object and switches between two modes that share
 it live - nothing goes stale moving between them:
 
 **Child mode (default, no PIN)** — `src/child`
-- **Home** — balances, big colorful Spend/Save/Give request buttons, an
-  "I Did My Jobs Today!" button, and a list of what's still waiting for
-  approval
-- **Money request** — shared screen for Spend/Save Transfer/Giving;
-  submitting only appends a pending approval event, never touches the
-  ledger directly
+- **Home** — mascot greeting, balances, a savings-goal progress bar (one
+  active goal, progress = the live Save balance), big colorful
+  Spend/Save/Give request buttons, an "I Did My Jobs Today!" button, a
+  "My Badges" button, and a list of what's still waiting for approval -
+  each with an **Undo** button while it's still pending
+- **Money request** — shared screen for Spend/Save Transfer/Giving
+  (Giving also picks a category - Church, Charity, etc.); submitting
+  only appends a pending approval event, never touches the ledger
+  directly
 - **Tasks** — mark today's responsibilities/achievements done (also just
-  appends a pending approval event)
+  appends a pending approval event), each with its own inline Undo while
+  still pending
+- **Badges** — Earned/Locked gallery of achievements (icon, description,
+  reward) - a visual board, not a new reward mechanism
 - A small link at the bottom switches to the Parent Dashboard
 
 **Parent mode (PIN gated)** — `src/parent`
@@ -115,10 +123,16 @@ PIN gate → operator picker (Dad/Mom) → tabbed dashboard:
   withdrawal (warns before overdrawing), record-a-real-world-transaction,
   correction
 - **Future** — record a Future account statement snapshot + history
-- **Manage** — settings, operator/responsibility/achievement editors,
-  change PIN, export/import/reset
+- **Manage** — settings, operator/responsibility/achievement (icon,
+  description, reward) editors, giving-category editor, savings-goal
+  editor, change PIN, export/import/reset
 
-No badges/gamification or money-practice/education screens yet.
+No money-practice/education screens yet. The illustrated Neyou mascot
+character art (reference sheets provided outside this repo) isn't wired
+in as real assets yet - the child screens use a `neyou.*` color palette
+extracted from those sheets (`tailwind.config.js`) plus an emoji-avatar
+placeholder (`MascotBubble` in `src/child/childUi.jsx`) until the actual
+artwork is added as project files (e.g. dropped into `public/mascot/`).
 
 ## Tests
 
@@ -126,12 +140,13 @@ No badges/gamification or money-practice/education screens yet.
 npm test
 ```
 
-56 Vitest tests cover integer cents math, exact weekly-split summing,
+52 Vitest tests cover integer cents math, exact weekly-split summing,
 linked transfer pairs, negative-balance blocking vs. warning behavior,
 correction reason enforcement, export/import round-tripping, Future
 account snapshot semantics, the approvals append-only log (including the
-money-request payload and kind-wide latest-event lookup), money request
-creation/routing, and PIN hashing.
+money-request payload, kind-wide latest-event lookup, withdrawal, and
+hasEverBeenApproved for badges), money request creation/routing
+(including giving categories), and PIN hashing.
 
 ## Deployment (Netlify)
 
