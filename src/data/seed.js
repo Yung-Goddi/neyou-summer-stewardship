@@ -5,6 +5,7 @@ import { transferBetweenAccounts } from '../engine/transfer.js'
 import { createCorrection } from '../engine/correction.js'
 import { createFutureSnapshot } from '../engine/futureSnapshot.js'
 import { createApprovalEvent, APPROVAL_KINDS, APPROVAL_STATUSES } from '../engine/approvals.js'
+import { createMoneyRequest } from '../engine/moneyRequests.js'
 import { CURRENT_VERSION } from '../storage/storage.js'
 
 // SHA-256 of "1234" - a placeholder default PIN, meant to be changed in
@@ -144,11 +145,15 @@ export function buildSeedLedger() {
   return { ledger, achievementRewardTransferId: achievementReward[0].transferId }
 }
 
-// A couple of approval events so the Approvals screen has something to
-// show out of the box: one responsibility approved with no money attached,
-// and the achievement approval linked (via transferId) to the reward
-// transfer created above.
+// A handful of approval events so both the Parent Approvals screen and the
+// child's "waiting for approval" list have something real to show out of
+// the box: two historical ones already approved (one plain, one linked via
+// transferId to the reward transfer created above), plus two still
+// 'pending' - dated *today* rather than a fixed date, so a fresh install
+// always shows something to act on regardless of when it's opened.
 function buildSeedApprovals(achievementRewardTransferId) {
+  const today = new Date().toISOString().slice(0, 10)
+
   return [
     createApprovalEvent({
       kind: APPROVAL_KINDS.RESPONSIBILITY,
@@ -167,6 +172,20 @@ function buildSeedApprovals(achievementRewardTransferId) {
       transferId: achievementRewardTransferId,
       notes: 'Reward posted to Spend',
       timestamp: '2026-06-03T18:00:00.000Z',
+    }),
+    createApprovalEvent({
+      kind: APPROVAL_KINDS.RESPONSIBILITY,
+      itemId: 'resp_trash',
+      status: APPROVAL_STATUSES.PENDING,
+      date: today,
+      approvedBy: 'op_child',
+      notes: 'Take out the trash',
+    }),
+    createMoneyRequest({
+      type: TRANSACTION_TYPES.SPEND,
+      amount: 250,
+      notes: 'Stickers',
+      requestedBy: 'op_child',
     }),
   ]
 }

@@ -1,0 +1,101 @@
+import { ACCOUNTS, formatCents, TRANSACTION_TYPES } from '../engine/index.js'
+import { getLatestEventsForKind, getApprovalStatus, APPROVAL_KINDS } from '../engine/approvals.js'
+import { BigCard, bigButtonClass, Toast, todayISO } from './childUi.jsx'
+
+const REQUEST_TILES = [
+  { type: TRANSACTION_TYPES.SPEND, emoji: '🛍️', label: 'I Want to Spend', color: 'bg-amber-300 text-amber-950' },
+  { type: TRANSACTION_TYPES.SAVE_TRANSFER, emoji: '🐷', label: 'Move to Save', color: 'bg-sky-300 text-sky-950' },
+  { type: TRANSACTION_TYPES.GIVING, emoji: '💝', label: 'I Want to Give', color: 'bg-rose-300 text-rose-950' },
+]
+
+export default function ChildHome({ state, balances, childOperator, message, onRequestMoney, onOpenTasks, onSwitchToParent }) {
+  const today = todayISO()
+  const pendingMoney = getLatestEventsForKind(state.approvals, APPROVAL_KINDS.MONEY_REQUEST).filter(
+    (e) => e.status === 'pending'
+  )
+  const pendingTasks = [
+    ...state.responsibilities.map((item) => ({ kind: APPROVAL_KINDS.RESPONSIBILITY, item })),
+    ...state.achievements.map((item) => ({ kind: APPROVAL_KINDS.ACHIEVEMENT, item })),
+  ]
+    .filter(({ kind, item }) => getApprovalStatus(state.approvals, kind, item.id, today) === 'pending')
+    .map(({ item }) => ({ id: `${item.id}-${today}`, notes: item.title, kind: 'task' }))
+  const waiting = [...pendingMoney, ...pendingTasks]
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-amber-100 via-sky-50 to-white p-4 sm:p-6 space-y-6">
+      <header className="text-center space-y-1">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-800">
+          Hi {childOperator?.name ?? 'there'}! 👋
+        </h1>
+        <p className="text-slate-500 text-lg">Here's your money.</p>
+      </header>
+
+      {message && <Toast message={message} />}
+
+      <BigCard>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { key: ACCOUNTS.SPEND, label: 'Spend', emoji: '🛍️' },
+            { key: ACCOUNTS.SAVE, label: 'Save', emoji: '🐷' },
+            { key: ACCOUNTS.GIVE, label: 'Give', emoji: '💝' },
+          ].map((row) => (
+            <div key={row.key} className="bg-slate-50 rounded-2xl p-4 text-center">
+              <div className="text-3xl">{row.emoji}</div>
+              <div className="text-slate-500 font-semibold">{row.label}</div>
+              <div className="text-2xl font-extrabold text-slate-800">{formatCents(balances[row.key])}</div>
+            </div>
+          ))}
+        </div>
+        <div className="bg-slate-50 rounded-2xl p-3 text-center">
+          <span className="text-slate-500 font-semibold">🌱 Future money growing: </span>
+          <span className="text-lg font-extrabold text-slate-800">{formatCents(balances[ACCOUNTS.FUTURE])}</span>
+        </div>
+      </BigCard>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        {REQUEST_TILES.map((tile) => (
+          <button
+            key={tile.type}
+            onClick={() => onRequestMoney(tile.type)}
+            className={`${bigButtonClass} ${tile.color} flex flex-col items-center gap-1`}
+          >
+            <span className="text-3xl">{tile.emoji}</span>
+            {tile.label}
+          </button>
+        ))}
+      </div>
+
+      <button
+        onClick={onOpenTasks}
+        className={`${bigButtonClass} w-full bg-emerald-300 text-emerald-950 flex items-center justify-center gap-2`}
+      >
+        <span className="text-3xl">✅</span> I Did My Jobs Today!
+      </button>
+
+      {waiting.length > 0 && (
+        <BigCard title="Waiting for Mom or Dad to say yes">
+          <ul className="space-y-2">
+            {waiting.map((event) => (
+              <li key={event.id} className="bg-amber-50 rounded-xl p-3 text-slate-700 font-semibold">
+                {describeWaiting(event)}
+              </li>
+            ))}
+          </ul>
+        </BigCard>
+      )}
+
+      <div className="text-center pt-4">
+        <button onClick={onSwitchToParent} className="text-slate-400 text-sm underline">
+          Parent Dashboard
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function describeWaiting(event) {
+  if (event.kind === APPROVAL_KINDS.MONEY_REQUEST) {
+    return `${formatCents(event.payload.amount)} - ${event.notes || 'no note'}`
+  }
+  return event.notes
+}

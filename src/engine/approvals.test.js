@@ -4,6 +4,7 @@ import {
   appendToApprovals,
   getApprovalStatus,
   getApprovalsForDate,
+  getLatestEventsForKind,
   APPROVAL_KINDS,
   APPROVAL_STATUSES,
 } from './approvals.js'
@@ -100,5 +101,57 @@ describe('approvals', () => {
     })
     const approvals = appendToApprovals(appendToApprovals([], a), b)
     expect(getApprovalsForDate(approvals, '2026-07-01')).toEqual([a])
+  })
+
+  it('carries an arbitrary payload for kind-specific data (money requests)', () => {
+    const event = createApprovalEvent({
+      kind: APPROVAL_KINDS.MONEY_REQUEST,
+      itemId: 'req_1',
+      status: APPROVAL_STATUSES.PENDING,
+      date: '2026-07-01',
+      payload: { type: 'spend', amount: 350, fromAccount: 'spend', toAccount: 'external' },
+    })
+    expect(event.payload).toEqual({ type: 'spend', amount: 350, fromAccount: 'spend', toAccount: 'external' })
+  })
+
+  describe('getLatestEventsForKind', () => {
+    it('collapses to one latest event per itemId, regardless of date', () => {
+      const pending = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.PENDING,
+        date: '2026-07-01',
+        timestamp: '2026-07-01T10:00:00.000Z',
+      })
+      const approved = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_1',
+        status: APPROVAL_STATUSES.APPROVED,
+        date: '2026-07-01',
+        timestamp: '2026-07-02T09:00:00.000Z',
+      })
+      const other = createApprovalEvent({
+        kind: APPROVAL_KINDS.MONEY_REQUEST,
+        itemId: 'req_2',
+        status: APPROVAL_STATUSES.PENDING,
+        date: '2026-07-03',
+      })
+      const approvals = appendToApprovals(appendToApprovals(appendToApprovals([], pending), approved), other)
+      const latest = getLatestEventsForKind(approvals, APPROVAL_KINDS.MONEY_REQUEST)
+      expect(latest).toHaveLength(2)
+      expect(latest.find((e) => e.itemId === 'req_1').status).toBe('approved')
+      expect(latest.find((e) => e.itemId === 'req_2').status).toBe('pending')
+    })
+
+    it('ignores events of a different kind', () => {
+      const responsibility = createApprovalEvent({
+        kind: APPROVAL_KINDS.RESPONSIBILITY,
+        itemId: 'resp_dishes',
+        status: APPROVAL_STATUSES.APPROVED,
+        date: '2026-07-01',
+      })
+      const approvals = appendToApprovals([], responsibility)
+      expect(getLatestEventsForKind(approvals, APPROVAL_KINDS.MONEY_REQUEST)).toEqual([])
+    })
   })
 })
