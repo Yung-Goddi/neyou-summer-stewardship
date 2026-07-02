@@ -20,6 +20,7 @@ export default function ManageConfigScreen({
   updateOperators,
   updateResponsibilities,
   updateAchievements,
+  updateBadges,
   updateGivingCategories,
   updateSavingsGoal,
   onError,
@@ -51,9 +52,10 @@ export default function ManageConfigScreen({
         items={state.responsibilities}
         columns={[
           { key: 'title', label: 'Title', type: 'text' },
-          { key: 'frequency', label: 'Frequency', type: 'select', options: ['daily', 'weekly'] },
+          { key: 'frequency', label: 'Frequency', type: 'select', options: ['daily', 'weekly', 'custom'] },
+          { key: 'customFrequencyLabel', label: 'Custom schedule (if Custom)', type: 'text' },
         ]}
-        defaults={{ title: '', frequency: 'daily' }}
+        defaults={{ title: '', frequency: 'daily', customFrequencyLabel: '' }}
         onSave={(items) => updateResponsibilities(items, 'Responsibilities updated.')}
       />
 
@@ -70,6 +72,25 @@ export default function ManageConfigScreen({
         ]}
         defaults={{ icon: '🏅', title: '', description: '', rewardCents: '0.00', assessmentInstructions: '' }}
         onSave={(items) => updateAchievements(items, 'Achievements updated.')}
+      />
+
+      <ListEditorCard
+        title="Badges"
+        idPrefix="badge"
+        items={state.badges}
+        columns={[
+          { key: 'icon', label: 'Icon (emoji)', type: 'text', narrow: true },
+          { key: 'title', label: 'Title', type: 'text' },
+          { key: 'description', label: 'Description', type: 'text' },
+          {
+            key: 'categoryId',
+            label: 'Category',
+            type: 'select',
+            options: state.badgeCategories.map((c) => ({ value: c.id, label: c.label })),
+          },
+        ]}
+        defaults={{ icon: '🏅', title: '', description: '', categoryId: state.badgeCategories[0]?.id ?? '' }}
+        onSave={(items) => updateBadges(items, 'Badges updated.')}
       />
 
       <ListEditorCard
@@ -259,15 +280,33 @@ function ListEditorCard({ title, idPrefix, items, columns, defaults, onSave }) {
       <div className="space-y-2">
         {draft.map((item, index) => (
           <div key={item.id} className="flex items-center gap-2 bg-slate-800 rounded-xl p-2">
-            {columns.map((col) => (
-              <input
-                key={col.key}
-                className={`${rowInputClass} ${col.narrow ? 'w-20 shrink-0' : 'flex-1'}`}
-                list={col.type === 'select' ? `${idPrefix}-${col.key}-options` : undefined}
-                value={item[col.key]}
-                onChange={(e) => updateField(index, col.key, e.target.value)}
-              />
-            ))}
+            {columns.map((col) =>
+              col.type === 'select' ? (
+                <select
+                  key={col.key}
+                  className={`${rowInputClass} ${col.narrow ? 'w-20 shrink-0' : 'flex-1'}`}
+                  value={item[col.key]}
+                  onChange={(e) => updateField(index, col.key, e.target.value)}
+                >
+                  {col.options.map((option) => {
+                    const value = typeof option === 'string' ? option : option.value
+                    const label = typeof option === 'string' ? option : option.label
+                    return (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    )
+                  })}
+                </select>
+              ) : (
+                <input
+                  key={col.key}
+                  className={`${rowInputClass} ${col.narrow ? 'w-20 shrink-0' : 'flex-1'}`}
+                  value={item[col.key]}
+                  onChange={(e) => updateField(index, col.key, e.target.value)}
+                />
+              )
+            )}
             <button
               type="button"
               className="min-h-[44px] px-3 rounded-lg bg-red-900 text-red-200 text-sm font-semibold hover:bg-red-800"
@@ -277,15 +316,6 @@ function ListEditorCard({ title, idPrefix, items, columns, defaults, onSave }) {
             </button>
           </div>
         ))}
-        {columns
-          .filter((col) => col.type === 'select')
-          .map((col) => (
-            <datalist key={col.key} id={`${idPrefix}-${col.key}-options`}>
-              {col.options.map((option) => (
-                <option key={option} value={option} />
-              ))}
-            </datalist>
-          ))}
         <div className="flex gap-3">
           <button type="button" className={secondaryButtonClass} onClick={addItem}>
             + Add

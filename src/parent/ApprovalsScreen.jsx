@@ -210,7 +210,7 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
                 <div>
                   <div className="font-medium">{item.title}</div>
                   <div className="text-slate-400 text-xs">
-                    {item.frequency}
+                    {item.frequency === 'custom' && item.customFrequencyLabel ? item.customFrequencyLabel : item.frequency}
                     {status === 'pending' && ' · marked done, waiting on you'}
                   </div>
                 </div>

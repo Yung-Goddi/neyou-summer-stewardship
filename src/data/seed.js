@@ -153,6 +153,77 @@ export const SEED_ACHIEVEMENTS = [
   },
 ]
 
+// Badges are a separate, non-monetary recognition board from the
+// cash-reward SEED_ACHIEVEMENTS above (see src/engine/badges.js) - no
+// reward amount, no approval workflow, just a category + title/description/
+// icon and a Bronze/Silver/Gold level a parent awards directly. Categories
+// are a fixed set for now (only badges themselves are meant to be added/
+// edited/deleted from Manage/Config); cat_secret_badges is the one category
+// with secret: true, which the child's Badges screen uses to hide its
+// contents entirely until each one is earned.
+export const SEED_BADGE_CATEGORIES = [
+  { id: 'cat_home_hero', label: 'Home Hero', secret: false },
+  { id: 'cat_money_master', label: 'Money Master', secret: false },
+  { id: 'cat_learning_explorer', label: 'Learning Explorer', secret: false },
+  { id: 'cat_character_builder', label: 'Character Builder', secret: false },
+  { id: 'cat_life_skills', label: 'Life Skills', secret: false },
+  { id: 'cat_special_achievements', label: 'Special Achievements', secret: false },
+  { id: 'cat_secret_badges', label: 'Secret Badges', secret: true },
+]
+
+export const SEED_BADGES = [
+  // Home Hero
+  { id: 'badge_room_rescue', categoryId: 'cat_home_hero', title: 'Room Rescue', description: 'Got a messy room back in shape.', icon: '🧹' },
+  { id: 'badge_kitchen_helper', categoryId: 'cat_home_hero', title: 'Kitchen Helper', description: 'Pitched in with kitchen chores.', icon: '🍽️' },
+  { id: 'badge_laundry_learner', categoryId: 'cat_home_hero', title: 'Laundry Learner', description: 'Helped with a load of laundry.', icon: '🧺' },
+  { id: 'badge_cleaning_champion', categoryId: 'cat_home_hero', title: 'Cleaning Champion', description: 'Went above and beyond cleaning up.', icon: '🏆' },
+  { id: 'badge_responsibility_star', categoryId: 'cat_home_hero', title: 'Responsibility Star', description: 'Stayed on top of daily responsibilities.', icon: '⭐' },
+
+  // Money Master
+  { id: 'badge_coin_counter', categoryId: 'cat_money_master', title: 'Coin Counter', description: 'Got great at counting coins.', icon: '🪙' },
+  { id: 'badge_dollar_detective', categoryId: 'cat_money_master', title: 'Dollar Detective', description: 'Figured out a money problem.', icon: '🔍' },
+  { id: 'badge_smart_shopper', categoryId: 'cat_money_master', title: 'Smart Shopper', description: 'Made a smart choice while shopping.', icon: '🛍️' },
+  { id: 'badge_super_saver', categoryId: 'cat_money_master', title: 'Super Saver', description: 'Saved money toward a goal.', icon: '🐷' },
+  { id: 'badge_budget_boss', categoryId: 'cat_money_master', title: 'Budget Boss', description: 'Planned out spending, saving, and giving.', icon: '📊' },
+
+  // Learning Explorer
+  { id: 'badge_reading_rookie', categoryId: 'cat_learning_explorer', title: 'Reading Rookie', description: 'Finished a book or reading goal.', icon: '📖' },
+  { id: 'badge_word_wizard', categoryId: 'cat_learning_explorer', title: 'Word Wizard', description: 'Showed off great vocabulary or spelling.', icon: '🔤' },
+  { id: 'badge_math_master', categoryId: 'cat_learning_explorer', title: 'Math Master', description: 'Nailed a math skill.', icon: '➗' },
+  { id: 'badge_curious_mind', categoryId: 'cat_learning_explorer', title: 'Curious Mind', description: 'Asked great questions and explored a topic.', icon: '🔭' },
+  { id: 'badge_lifelong_learner', categoryId: 'cat_learning_explorer', title: 'Lifelong Learner', description: 'Kept learning even when it was hard.', icon: '🎓' },
+
+  // Character Builder
+  { id: 'badge_kind_heart', categoryId: 'cat_character_builder', title: 'Kind Heart', description: 'Showed real kindness to someone.', icon: '💗' },
+  { id: 'badge_helpful_hands', categoryId: 'cat_character_builder', title: 'Helpful Hands', description: 'Helped out without being asked.', icon: '🤲' },
+  { id: 'badge_thankful_spirit', categoryId: 'cat_character_builder', title: 'Thankful Spirit', description: 'Showed gratitude for what she has.', icon: '🙏' },
+  { id: 'badge_never_gives_up', categoryId: 'cat_character_builder', title: 'Never Gives Up', description: 'Kept trying through something tough.', icon: '💪' },
+  { id: 'badge_truth_teller', categoryId: 'cat_character_builder', title: 'Truth Teller', description: 'Told the truth even when it was hard.', icon: '🗣️' },
+
+  // Life Skills
+  { id: 'badge_breakfast_builder', categoryId: 'cat_life_skills', title: 'Breakfast Builder', description: 'Made her own breakfast.', icon: '🥣' },
+  { id: 'badge_plant_protector', categoryId: 'cat_life_skills', title: 'Plant Protector', description: 'Took care of a plant.', icon: '🌱' },
+  { id: 'badge_animal_friend', categoryId: 'cat_life_skills', title: 'Animal Friend', description: 'Took great care of a pet.', icon: '🐾' },
+  { id: 'badge_adventure_ready', categoryId: 'cat_life_skills', title: 'Adventure Ready', description: 'Packed and prepared for an outing herself.', icon: '🎒' },
+  { id: 'badge_independent_kid', categoryId: 'cat_life_skills', title: 'Independent Kid', description: 'Handled something on her own.', icon: '🧭' },
+
+  // Special Achievements
+  { id: 'badge_responsibility_royalty', categoryId: 'cat_special_achievements', title: 'Responsibility Royalty', description: 'Owned her responsibilities like a pro.', icon: '👑' },
+  { id: 'badge_30_day_streak', categoryId: 'cat_special_achievements', title: '30-Day Streak', description: 'Kept up responsibilities for 30 days.', icon: '🔥' },
+  { id: 'badge_100_chores_completed', categoryId: 'cat_special_achievements', title: '100 Chores Completed', description: 'Completed 100 chores total.', icon: '💯' },
+  { id: 'badge_first_100_saved', categoryId: 'cat_special_achievements', title: 'First $100 Saved', description: 'Saved her first $100.', icon: '💵' },
+  { id: 'badge_summer_champion', categoryId: 'cat_special_achievements', title: 'Summer Champion', description: 'Crushed it all summer long.', icon: '🏅' },
+
+  // Secret Badges (hidden from the child until earned - see cat_secret_badges.secret)
+  { id: 'badge_surprise_helper', categoryId: 'cat_secret_badges', title: 'Surprise Helper', description: 'Helped out in a way nobody expected.', icon: '🎁' },
+  { id: 'badge_random_act_of_kindness', categoryId: 'cat_secret_badges', title: 'Random Act of Kindness', description: 'Did something kind out of the blue.', icon: '✨' },
+  { id: 'badge_joy_bringer', categoryId: 'cat_secret_badges', title: 'Joy Bringer', description: 'Brought some real joy to the family.', icon: '😄' },
+  { id: 'badge_dads_choice_award', categoryId: 'cat_secret_badges', title: "Dad's Choice Award", description: "Dad's personal pick for something great.", icon: '🥇' },
+  { id: 'badge_above_and_beyond', categoryId: 'cat_secret_badges', title: 'Above and Beyond', description: 'Went way further than expected.', icon: '🚀' },
+]
+
+export const SEED_BADGE_AWARDS = []
+
 export const SEED_GIVING_CATEGORIES = [
   { id: 'give_church', label: 'Church' },
   { id: 'give_charity', label: 'Charity' },
@@ -330,6 +401,9 @@ export function buildSeedState() {
     operators: SEED_OPERATORS,
     responsibilities: SEED_RESPONSIBILITIES,
     achievements: SEED_ACHIEVEMENTS,
+    badgeCategories: SEED_BADGE_CATEGORIES,
+    badges: SEED_BADGES,
+    badgeAwards: SEED_BADGE_AWARDS,
     givingCategories: SEED_GIVING_CATEGORIES,
     savingsGoal: SEED_SAVINGS_GOAL,
     approvals: buildSeedApprovals(achievementRewardTransferId),

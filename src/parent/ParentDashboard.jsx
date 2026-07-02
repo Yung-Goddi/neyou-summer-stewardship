@@ -6,6 +6,7 @@ const NAV_TILES = [
   { view: 'approvals', label: 'Approvals', hint: "Today's responsibilities & achievements" },
   { view: 'money', label: 'Money Actions', hint: 'Split, bonus, deposit, withdrawal, correction' },
   { view: 'future', label: 'Future Account', hint: 'Record a statement snapshot' },
+  { view: 'badges', label: 'Badges', hint: 'Award Bronze/Silver/Gold levels' },
   { view: 'manage', label: 'Manage / Config', hint: 'Settings, operators, catalog, PIN' },
 ]
 

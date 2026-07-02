@@ -5,6 +5,7 @@ import ParentDashboard from './ParentDashboard.jsx'
 import ApprovalsScreen from './ApprovalsScreen.jsx'
 import MoneyActionsScreen from './MoneyActionsScreen.jsx'
 import FutureSnapshotScreen from './FutureSnapshotScreen.jsx'
+import BadgesManageScreen from './BadgesManageScreen.jsx'
 import ManageConfigScreen from './ManageConfigScreen.jsx'
 import { Toast } from './ui.jsx'
 
@@ -13,6 +14,7 @@ const NAV_ITEMS = [
   { view: 'approvals', label: 'Approvals' },
   { view: 'money', label: 'Money' },
   { view: 'future', label: 'Future' },
+  { view: 'badges', label: 'Badges' },
   { view: 'manage', label: 'Manage' },
 ]
 
@@ -79,6 +81,7 @@ export default function ParentApp({ state, onExitToChild, ...shared }) {
         {view === 'approvals' && <ApprovalsScreen {...screenProps} />}
         {view === 'money' && <MoneyActionsScreen {...screenProps} />}
         {view === 'future' && <FutureSnapshotScreen {...screenProps} />}
+        {view === 'badges' && <BadgesManageScreen {...screenProps} />}
         {view === 'manage' && <ManageConfigScreen {...screenProps} />}
       </main>
     </div>

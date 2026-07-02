@@ -77,6 +77,21 @@ export default function AppShell() {
     if (successMessage) setMessage({ tone: 'success', text: successMessage })
   }
 
+  function updateBadgeCategories(badgeCategories, successMessage) {
+    setState((prev) => ({ ...prev, badgeCategories }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
+  function updateBadges(badges, successMessage) {
+    setState((prev) => ({ ...prev, badges }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
+  function updateBadgeAwards(badgeAwards, successMessage) {
+    setState((prev) => ({ ...prev, badgeAwards }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
   function updateGivingCategories(givingCategories, successMessage) {
     setState((prev) => ({ ...prev, givingCategories }))
     if (successMessage) setMessage({ tone: 'success', text: successMessage })
@@ -151,6 +166,9 @@ export default function AppShell() {
     updateOperators,
     updateResponsibilities,
     updateAchievements,
+    updateBadgeCategories,
+    updateBadges,
+    updateBadgeAwards,
     updateGivingCategories,
     updateSavingsGoal,
     onError: fail,

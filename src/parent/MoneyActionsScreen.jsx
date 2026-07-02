@@ -5,13 +5,16 @@ import {
   DIRECTIONS,
   dollarsToCents,
   formatCents,
+  calculateBalance,
   transferBetweenAccounts,
   runWeeklySplit,
   createCorrection,
+  createResetToZeroCorrection,
+  createSetBalanceCorrection,
   validateTransaction,
   previewNegativeImpact,
 } from '../engine/index.js'
-import { Card, Field, inputClass, buttonClass, labelize, confirmWarnings } from './ui.jsx'
+import { Card, Field, inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, labelize, confirmWarnings } from './ui.jsx'
 
 const HOME_ACCOUNT_OPTIONS = [ACCOUNTS.SPEND, ACCOUNTS.SAVE, ACCOUNTS.GIVE]
 const RECORD_TYPE_OPTIONS = [
@@ -41,6 +44,7 @@ export default function MoneyActionsScreen({ state, currentOperator, commitLedge
         onError={onError}
       />
       <ParentWithdrawalCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
+      <BalanceControlsCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
       <RecordTransactionCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
       <CorrectionCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
     </div>
@@ -209,6 +213,108 @@ function ParentWithdrawalCard({ state, currentOperator, commitLedger, onError })
           Withdraw
         </button>
       </form>
+    </Card>
+  )
+}
+
+function BalanceControlsCard({ state, currentOperator, commitLedger, onError }) {
+  const [targetAccount, setTargetAccount] = useState(ACCOUNTS.SPEND)
+  const [targetAmount, setTargetAmount] = useState('0.00')
+  const [note, setNote] = useState('')
+
+  function setBalance(e) {
+    e.preventDefault()
+    try {
+      const targetCents = dollarsToCents(targetAmount)
+      const entry = createSetBalanceCorrection({
+        ledger: state.ledger,
+        account: targetAccount,
+        targetAmount: targetCents,
+        approvedBy: currentOperator.id,
+        reason: note.trim() || undefined,
+      })
+      if (!entry) {
+        onError(new Error(`${labelize(targetAccount)} is already ${formatCents(targetCents)}.`))
+        return
+      }
+      const check = validateTransaction(state.ledger, entry)
+      if (!confirmWarnings(check.warnings)) return
+      commitLedger(entry, `${labelize(targetAccount)} set to ${formatCents(targetCents)}.`)
+      setNote('')
+    } catch (error) {
+      onError(error)
+    }
+  }
+
+  function resetToZero(account) {
+    const current = calculateBalance(state.ledger, account)
+    if (current === 0) {
+      onError(new Error(`${labelize(account)} is already $0.00.`))
+      return
+    }
+    const warned = confirmWarnings([
+      `This resets ${labelize(account)} from ${formatCents(current)} to $0.00 with a correction. Completed chores and badges are not affected.`,
+    ])
+    if (!warned) return
+    const entry = createResetToZeroCorrection({ ledger: state.ledger, account, approvedBy: currentOperator.id })
+    commitLedger(entry, `${labelize(account)} reset to $0.00.`)
+  }
+
+  function resetAllToZero() {
+    const nonZero = HOME_ACCOUNT_OPTIONS.filter((a) => calculateBalance(state.ledger, a) !== 0)
+    if (nonZero.length === 0) {
+      onError(new Error('Spend, Save, and Give are already $0.00.'))
+      return
+    }
+    const warned = confirmWarnings([
+      'This resets Spend, Save, and Give to $0.00 with corrections. Completed chores and badges are not affected.',
+    ])
+    if (!warned) return
+    const entries = nonZero
+      .map((account) => createResetToZeroCorrection({ ledger: state.ledger, account, approvedBy: currentOperator.id }))
+      .filter(Boolean)
+    commitLedger(entries, 'Spend, Save, and Give reset to $0.00.')
+  }
+
+  return (
+    <Card title="Balance Controls">
+      <p className="text-slate-400 text-sm">
+        Set an account to an exact balance, or reset it to zero. Both post a Correction to the ledger - completed
+        chores, achievements, and badges are never touched.
+      </p>
+      <form className="space-y-3" onSubmit={setBalance}>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Account">
+            <select className={inputClass} value={targetAccount} onChange={(e) => setTargetAccount(e.target.value)}>
+              {HOME_ACCOUNT_OPTIONS.map((a) => (
+                <option key={a} value={a}>
+                  {labelize(a)}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Set balance to (dollars)">
+            <input className={inputClass} value={targetAmount} onChange={(e) => setTargetAmount(e.target.value)} />
+          </Field>
+        </div>
+        <Field label="Note (optional)">
+          <input className={inputClass} value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+        <button className={buttonClass} type="submit">
+          Set Balance
+        </button>
+      </form>
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+        {HOME_ACCOUNT_OPTIONS.map((a) => (
+          <button key={a} type="button" className={secondaryButtonClass} onClick={() => resetToZero(a)}>
+            Reset {labelize(a)} to $0
+          </button>
+        ))}
+        <button type="button" className={dangerButtonClass} onClick={resetAllToZero}>
+          Reset All to $0
+        </button>
+      </div>
     </Card>
   )
 }
