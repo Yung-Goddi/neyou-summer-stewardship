@@ -6,17 +6,21 @@ import {
   dollarsToCents,
   formatCents,
   calculateBalance,
+  calculateFutureBalance,
   transferBetweenAccounts,
   runWeeklySplit,
   createCorrection,
   createResetToZeroCorrection,
   createSetBalanceCorrection,
+  createFutureSnapshot,
+  buildInitialBalanceEntries,
   validateTransaction,
   previewNegativeImpact,
 } from '../engine/index.js'
 import { Card, Field, inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, labelize, confirmWarnings } from './ui.jsx'
 
 const HOME_ACCOUNT_OPTIONS = [ACCOUNTS.SPEND, ACCOUNTS.SAVE, ACCOUNTS.GIVE]
+const ALL_ACCOUNT_OPTIONS = [ACCOUNTS.SPEND, ACCOUNTS.SAVE, ACCOUNTS.GIVE, ACCOUNTS.FUTURE, ACCOUNTS.EXTERNAL]
 const RECORD_TYPE_OPTIONS = [
   { type: TRANSACTION_TYPES.SPEND, from: ACCOUNTS.SPEND, to: ACCOUNTS.EXTERNAL },
   { type: TRANSACTION_TYPES.SAVE_TRANSFER, from: ACCOUNTS.SPEND, to: ACCOUNTS.SAVE },
@@ -45,6 +49,7 @@ export default function MoneyActionsScreen({ state, currentOperator, commitLedge
       />
       <ParentWithdrawalCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
       <BalanceControlsCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
+      <QuickResetCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
       <RecordTransactionCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
       <CorrectionCard state={state} currentOperator={currentOperator} commitLedger={commitLedger} onError={onError} />
     </div>
@@ -222,10 +227,31 @@ function BalanceControlsCard({ state, currentOperator, commitLedger, onError }) 
   const [targetAmount, setTargetAmount] = useState('0.00')
   const [note, setNote] = useState('')
 
+  // Future isn't a running ledger sum like the other four - it's "the most
+  // recent statement snapshot" (see calculateFutureBalance), so "setting" or
+  // "resetting" it means recording a new snapshot rather than diffing a
+  // Correction. Everything else routes through the same Correction-based
+  // helpers used elsewhere in this file.
   function setBalance(e) {
     e.preventDefault()
     try {
       const targetCents = dollarsToCents(targetAmount)
+
+      if (targetAccount === ACCOUNTS.FUTURE) {
+        if (calculateFutureBalance(state.ledger) === targetCents) {
+          onError(new Error(`Future is already ${formatCents(targetCents)}.`))
+          return
+        }
+        const entry = createFutureSnapshot({
+          amount: targetCents,
+          notes: note.trim() || 'Manual balance adjustment',
+          approvedBy: currentOperator.id,
+        })
+        commitLedger(entry, `Future set to ${formatCents(targetCents)}.`)
+        setNote('')
+        return
+      }
+
       const entry = createSetBalanceCorrection({
         ledger: state.ledger,
         account: targetAccount,
@@ -247,46 +273,37 @@ function BalanceControlsCard({ state, currentOperator, commitLedger, onError }) 
   }
 
   function resetToZero(account) {
-    const current = calculateBalance(state.ledger, account)
+    const current =
+      account === ACCOUNTS.FUTURE ? calculateFutureBalance(state.ledger) : calculateBalance(state.ledger, account)
     if (current === 0) {
       onError(new Error(`${labelize(account)} is already $0.00.`))
       return
     }
     const warned = confirmWarnings([
-      `This resets ${labelize(account)} from ${formatCents(current)} to $0.00 with a correction. Completed chores and badges are not affected.`,
+      `This resets ${labelize(account)} from ${formatCents(current)} to $0.00. Completed chores and badges are not affected.`,
     ])
     if (!warned) return
-    const entry = createResetToZeroCorrection({ ledger: state.ledger, account, approvedBy: currentOperator.id })
-    commitLedger(entry, `${labelize(account)} reset to $0.00.`)
-  }
 
-  function resetAllToZero() {
-    const nonZero = HOME_ACCOUNT_OPTIONS.filter((a) => calculateBalance(state.ledger, a) !== 0)
-    if (nonZero.length === 0) {
-      onError(new Error('Spend, Save, and Give are already $0.00.'))
+    if (account === ACCOUNTS.FUTURE) {
+      const entry = createFutureSnapshot({ amount: 0, notes: 'Reset to zero by parent', approvedBy: currentOperator.id })
+      commitLedger(entry, 'Future reset to $0.00.')
       return
     }
-    const warned = confirmWarnings([
-      'This resets Spend, Save, and Give to $0.00 with corrections. Completed chores and badges are not affected.',
-    ])
-    if (!warned) return
-    const entries = nonZero
-      .map((account) => createResetToZeroCorrection({ ledger: state.ledger, account, approvedBy: currentOperator.id }))
-      .filter(Boolean)
-    commitLedger(entries, 'Spend, Save, and Give reset to $0.00.')
+    const entry = createResetToZeroCorrection({ ledger: state.ledger, account, approvedBy: currentOperator.id })
+    commitLedger(entry, `${labelize(account)} reset to $0.00.`)
   }
 
   return (
     <Card title="Balance Controls">
       <p className="text-slate-400 text-sm">
-        Set an account to an exact balance, or reset it to zero. Both post a Correction to the ledger - completed
-        chores, achievements, and badges are never touched.
+        Set any account to an exact balance, or reset it to zero - Spend, Save, Give, Future, and External are all
+        covered here. Completed chores, achievements, and badges are never touched.
       </p>
       <form className="space-y-3" onSubmit={setBalance}>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Account">
             <select className={inputClass} value={targetAccount} onChange={(e) => setTargetAccount(e.target.value)}>
-              {HOME_ACCOUNT_OPTIONS.map((a) => (
+              {ALL_ACCOUNT_OPTIONS.map((a) => (
                 <option key={a} value={a}>
                   {labelize(a)}
                 </option>
@@ -305,16 +322,81 @@ function BalanceControlsCard({ state, currentOperator, commitLedger, onError }) 
         </button>
       </form>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-        {HOME_ACCOUNT_OPTIONS.map((a) => (
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+        {ALL_ACCOUNT_OPTIONS.map((a) => (
           <button key={a} type="button" className={secondaryButtonClass} onClick={() => resetToZero(a)}>
             Reset {labelize(a)} to $0
           </button>
         ))}
-        <button type="button" className={dangerButtonClass} onClick={resetAllToZero}>
-          Reset All to $0
-        </button>
       </div>
+    </Card>
+  )
+}
+
+// One button that asks for confirmation up front, then reveals a choice
+// between wiping every balance to zero or restoring the parent-defined
+// starting point (state.initialBalances, set in Manage / Config →
+// Initialize Child Account) - both go through buildInitialBalanceEntries,
+// the same helper the Initialize screen uses, so the behavior (and the
+// "chores/badges are never touched" guarantee) is identical either way.
+function QuickResetCard({ state, currentOperator, commitLedger, onError }) {
+  const [showOptions, setShowOptions] = useState(false)
+
+  function start() {
+    const warned = confirmWarnings([
+      "This resets your child's Spend, Save, Give, Future, and External balances. Completed chores, achievements, and badges are never affected. Choose zero or the saved starting balances next.",
+    ])
+    if (warned) setShowOptions(true)
+  }
+
+  function resetAllToZero() {
+    const targets = Object.fromEntries(ALL_ACCOUNT_OPTIONS.map((a) => [a, 0]))
+    const entries = buildInitialBalanceEntries({ ledger: state.ledger, targets, approvedBy: currentOperator.id })
+    if (entries.length === 0) {
+      onError(new Error('All balances are already $0.00.'))
+    } else {
+      commitLedger(entries, 'All balances reset to $0.00.')
+    }
+    setShowOptions(false)
+  }
+
+  function resetToStartingBalances() {
+    const entries = buildInitialBalanceEntries({
+      ledger: state.ledger,
+      targets: state.initialBalances,
+      approvedBy: currentOperator.id,
+    })
+    if (entries.length === 0) {
+      onError(new Error('Balances already match the starting point.'))
+    } else {
+      commitLedger(entries, 'Balances reset to the starting point.')
+    }
+    setShowOptions(false)
+  }
+
+  return (
+    <Card title="Quick Reset">
+      <p className="text-slate-400 text-sm">
+        Reset every balance at once - to zero, or back to the starting point set in Manage / Config → Initialize
+        Child Account.
+      </p>
+      {!showOptions ? (
+        <button type="button" className={dangerButtonClass} onClick={start}>
+          Reset Child Balances
+        </button>
+      ) : (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <button type="button" className={dangerButtonClass} onClick={resetAllToZero}>
+            Reset All to Zero
+          </button>
+          <button type="button" className={buttonClass} onClick={resetToStartingBalances}>
+            Reset to Starting Balances
+          </button>
+          <button type="button" className={secondaryButtonClass} onClick={() => setShowOptions(false)}>
+            Cancel
+          </button>
+        </div>
+      )}
     </Card>
   )
 }

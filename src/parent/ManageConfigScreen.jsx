@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { dollarsToCents, centsToDollars, verifyPin, hashPin } from '../engine/index.js'
-import { Card, Field, inputClass, buttonClass, secondaryButtonClass, dangerButtonClass } from './ui.jsx'
+import { ACCOUNTS, dollarsToCents, centsToDollars, formatCents, buildInitialBalanceEntries, verifyPin, hashPin } from '../engine/index.js'
+import { Card, Field, inputClass, buttonClass, secondaryButtonClass, dangerButtonClass, confirmWarnings } from './ui.jsx'
 
 function makeId(prefix) {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
@@ -16,11 +16,14 @@ const rowInputClass = inputClass.replace('w-full', 'min-w-0')
 
 export default function ManageConfigScreen({
   state,
+  currentOperator,
+  commitLedger,
   updateSettings,
   updateOperators,
   updateResponsibilities,
   updateAchievements,
   updateBadges,
+  updateInitialBalances,
   updateGivingCategories,
   updateSavingsGoal,
   onError,
@@ -32,6 +35,14 @@ export default function ManageConfigScreen({
 }) {
   return (
     <div className="space-y-6">
+      <InitializeAccountCard
+        state={state}
+        currentOperator={currentOperator}
+        commitLedger={commitLedger}
+        updateInitialBalances={updateInitialBalances}
+        onError={onError}
+      />
+
       <SettingsCard settings={state.settings} updateSettings={updateSettings} onError={onError} />
 
       <ListEditorCard
@@ -121,6 +132,82 @@ export default function ManageConfigScreen({
         </div>
       </Card>
     </div>
+  )
+}
+
+// The official starting point for this child's account (state.initialBalances) -
+// not developer placeholder history. Setting it here immediately brings every
+// current balance to match (via buildInitialBalanceEntries, the same helper
+// "Reset to Starting Balances" in Money Actions uses later), and remembers the
+// values so that reset always has something real to go back to.
+function InitializeAccountCard({ state, currentOperator, commitLedger, updateInitialBalances, onError }) {
+  const initial = state.initialBalances
+  const [spend, setSpend] = useState(centsToDollars(initial[ACCOUNTS.SPEND]))
+  const [save, setSave] = useState(centsToDollars(initial[ACCOUNTS.SAVE]))
+  const [give, setGive] = useState(centsToDollars(initial[ACCOUNTS.GIVE]))
+  const [future, setFuture] = useState(centsToDollars(initial[ACCOUNTS.FUTURE]))
+  const [external, setExternal] = useState(centsToDollars(initial[ACCOUNTS.EXTERNAL]))
+
+  const targets = {
+    [ACCOUNTS.SPEND]: dollarsToCents(spend || '0'),
+    [ACCOUNTS.SAVE]: dollarsToCents(save || '0'),
+    [ACCOUNTS.GIVE]: dollarsToCents(give || '0'),
+    [ACCOUNTS.FUTURE]: dollarsToCents(future || '0'),
+    [ACCOUNTS.EXTERNAL]: dollarsToCents(external || '0'),
+  }
+  const totalCents = Object.values(targets).reduce((sum, cents) => sum + cents, 0)
+
+  function submit(e) {
+    e.preventDefault()
+    try {
+      const warned = confirmWarnings([
+        `This sets the starting point to Spend ${formatCents(targets[ACCOUNTS.SPEND])}, Save ${formatCents(
+          targets[ACCOUNTS.SAVE]
+        )}, Give ${formatCents(targets[ACCOUNTS.GIVE])}, Future ${formatCents(
+          targets[ACCOUNTS.FUTURE]
+        )}, External ${formatCents(targets[ACCOUNTS.EXTERNAL])} - and updates every current balance to match right now.`,
+      ])
+      if (!warned) return
+
+      const entries = buildInitialBalanceEntries({ ledger: state.ledger, targets, approvedBy: currentOperator.id })
+      if (entries.length > 0) commitLedger(entries)
+      updateInitialBalances(targets, 'Starting balances set.')
+    } catch (error) {
+      onError(error)
+    }
+  }
+
+  return (
+    <Card title="Initialize Child Account">
+      <p className="text-slate-400 text-sm">
+        Set the official starting point for this child&apos;s account - not placeholder demo balances. This updates
+        every current balance to match right now, and is what &ldquo;Reset to Starting Balances&rdquo; (Money
+        Actions) resets back to later.
+      </p>
+      <form className="space-y-3" onSubmit={submit}>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <Field label="Spend ($)">
+            <input className={inputClass} value={spend} onChange={(e) => setSpend(e.target.value)} />
+          </Field>
+          <Field label="Save ($)">
+            <input className={inputClass} value={save} onChange={(e) => setSave(e.target.value)} />
+          </Field>
+          <Field label="Give ($)">
+            <input className={inputClass} value={give} onChange={(e) => setGive(e.target.value)} />
+          </Field>
+          <Field label="Future ($)">
+            <input className={inputClass} value={future} onChange={(e) => setFuture(e.target.value)} />
+          </Field>
+          <Field label="External ($, optional)">
+            <input className={inputClass} value={external} onChange={(e) => setExternal(e.target.value)} />
+          </Field>
+        </div>
+        <p className="text-sm font-semibold text-slate-300">Total Starting Balance: {formatCents(totalCents)}</p>
+        <button className={buttonClass} type="submit">
+          Set Starting Balances
+        </button>
+      </form>
+    </Card>
   )
 }
 

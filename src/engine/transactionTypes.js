@@ -9,6 +9,7 @@ export const TRANSACTION_TYPES = Object.freeze({
   PARENT_WITHDRAWAL: 'parent_withdrawal',
   CORRECTION: 'correction',
   FUTURE_ACCOUNT_SNAPSHOT: 'future_account_snapshot',
+  INITIAL_BALANCE: 'initial_balance',
 })
 
 export const DIRECTIONS = Object.freeze({ IN: 'in', OUT: 'out' })
@@ -33,4 +34,5 @@ export const VALIDATION_EXEMPT_TYPES = Object.freeze([
   TRANSACTION_TYPES.PARENT_DEPOSIT,
   TRANSACTION_TYPES.PARENT_WITHDRAWAL,
   TRANSACTION_TYPES.FUTURE_ACCOUNT_SNAPSHOT,
+  TRANSACTION_TYPES.INITIAL_BALANCE,
 ])

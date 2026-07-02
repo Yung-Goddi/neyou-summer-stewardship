@@ -92,6 +92,11 @@ export default function AppShell() {
     if (successMessage) setMessage({ tone: 'success', text: successMessage })
   }
 
+  function updateInitialBalances(initialBalances, successMessage) {
+    setState((prev) => ({ ...prev, initialBalances }))
+    if (successMessage) setMessage({ tone: 'success', text: successMessage })
+  }
+
   function updateGivingCategories(givingCategories, successMessage) {
     setState((prev) => ({ ...prev, givingCategories }))
     if (successMessage) setMessage({ tone: 'success', text: successMessage })
@@ -169,6 +174,7 @@ export default function AppShell() {
     updateBadgeCategories,
     updateBadges,
     updateBadgeAwards,
+    updateInitialBalances,
     updateGivingCategories,
     updateSavingsGoal,
     onError: fail,

@@ -1,9 +1,6 @@
 import { ACCOUNTS } from '../engine/accounts.js'
-import { TRANSACTION_TYPES, DIRECTIONS } from '../engine/transactionTypes.js'
-import { runWeeklySplit } from '../engine/weeklySplit.js'
-import { transferBetweenAccounts } from '../engine/transfer.js'
-import { createCorrection } from '../engine/correction.js'
-import { createFutureSnapshot } from '../engine/futureSnapshot.js'
+import { TRANSACTION_TYPES } from '../engine/transactionTypes.js'
+import { buildInitialBalanceEntries } from '../engine/initialBalance.js'
 import { createApprovalEvent, APPROVAL_KINDS, APPROVAL_STATUSES } from '../engine/approvals.js'
 import { createMoneyRequest } from '../engine/moneyRequests.js'
 import { CURRENT_VERSION } from '../storage/storage.js'
@@ -19,6 +16,20 @@ export const SEED_SETTINGS = {
   splitPercentages: { spend: 60, save: 30, give: 10 },
   weeklyIncomeAmount: 1000, // $10.00, in cents
   parentPinHash: DEFAULT_PARENT_PIN_HASH,
+}
+
+// The official starting point for a brand-new child account - no developer
+// placeholder history, just an honest opening balance per account (in
+// cents). This is also what "Reset to Starting Balances" (Money Actions)
+// resets back to, and what pre-fills the "Initialize Child Account" screen
+// in Manage/Config - both read/write this same shape via
+// state.initialBalances. See src/engine/initialBalance.js.
+export const SEED_INITIAL_BALANCES = {
+  [ACCOUNTS.SPEND]: 400, // $4.00
+  [ACCOUNTS.SAVE]: 400, // $4.00
+  [ACCOUNTS.GIVE]: 200, // $2.00
+  [ACCOUNTS.FUTURE]: 0,
+  [ACCOUNTS.EXTERNAL]: 0,
 }
 
 export const SEED_OPERATORS = [
@@ -241,120 +252,31 @@ export const SEED_SAVINGS_GOAL = {
   targetCents: 6000, // $60.00
 }
 
-// Builds a small, believable stretch of ledger history by calling the real
-// engine functions (not hand-authored entries), so importing this seed also
-// proves the engine accepts its own output end to end.
+// Builds the ledger for a brand-new child account: nothing but the
+// official opening balance (SEED_INITIAL_BALANCES), posted through the
+// same buildInitialBalanceEntries the "Initialize Child Account" screen
+// and "Reset to Starting Balances" use - so importing this seed also
+// proves the engine accepts its own output end to end. No demo purchases,
+// gifts, or achievement payouts baked in; see CHANGELOG.md.
 export function buildSeedLedger() {
-  let ledger = []
-  const commit = (entries) => {
-    ledger = [...ledger, ...(Array.isArray(entries) ? entries : [entries])]
-    return entries
-  }
+  const ledger = buildInitialBalanceEntries({
+    ledger: [],
+    targets: SEED_INITIAL_BALANCES,
+    approvedBy: 'op_dad',
+    timestamp: '2026-06-01T09:00:00.000Z',
+  })
 
-  commit(
-    runWeeklySplit({
-      ledger,
-      totalAmount: SEED_SETTINGS.weeklyIncomeAmount,
-      splitPercentages: SEED_SETTINGS.splitPercentages,
-      approvedBy: 'op_dad',
-      notes: 'Week 1 weekly income split',
-      timestamp: '2026-06-01T09:00:00.000Z',
-    })
-  )
-
-  const achievementReward = commit(
-    transferBetweenAccounts({
-      ledger,
-      type: TRANSACTION_TYPES.ACHIEVEMENT_REWARD,
-      fromAccount: ACCOUNTS.EXTERNAL,
-      toAccount: ACCOUNTS.SPEND,
-      amount: 200,
-      approvedBy: 'op_dad',
-      notes: 'Achievement: First $2.00 saved',
-      timestamp: '2026-06-03T18:00:00.000Z',
-    })
-  )
-
-  commit(
-    transferBetweenAccounts({
-      ledger,
-      type: TRANSACTION_TYPES.SPEND,
-      fromAccount: ACCOUNTS.SPEND,
-      toAccount: ACCOUNTS.EXTERNAL,
-      amount: 350,
-      approvedBy: 'op_child',
-      notes: 'Ice cream at the shop',
-      timestamp: '2026-06-05T15:30:00.000Z',
-    })
-  )
-
-  commit(
-    createCorrection({
-      account: ACCOUNTS.SPEND,
-      direction: DIRECTIONS.IN,
-      amount: 100,
-      reason: 'Ice cream shop rang up the wrong price, refunded $1.00',
-      approvedBy: 'op_mom',
-      timestamp: '2026-06-06T09:00:00.000Z',
-    })
-  )
-
-  commit(
-    transferBetweenAccounts({
-      ledger,
-      type: TRANSACTION_TYPES.GIVING,
-      fromAccount: ACCOUNTS.GIVE,
-      toAccount: ACCOUNTS.EXTERNAL,
-      amount: 100,
-      approvedBy: 'op_child',
-      notes: 'Sunday offering',
-      timestamp: '2026-06-07T10:00:00.000Z',
-    })
-  )
-
-  commit(
-    transferBetweenAccounts({
-      ledger,
-      type: TRANSACTION_TYPES.PARENT_DEPOSIT,
-      fromAccount: ACCOUNTS.EXTERNAL,
-      toAccount: ACCOUNTS.SAVE,
-      amount: 1000,
-      approvedBy: 'op_mom',
-      notes: 'Birthday gift from Grandma',
-      timestamp: '2026-06-10T12:00:00.000Z',
-    })
-  )
-
-  commit(
-    runWeeklySplit({
-      ledger,
-      totalAmount: SEED_SETTINGS.weeklyIncomeAmount,
-      splitPercentages: SEED_SETTINGS.splitPercentages,
-      approvedBy: 'op_dad',
-      notes: 'Week 2 weekly income split',
-      timestamp: '2026-06-08T09:00:00.000Z',
-    })
-  )
-
-  commit(
-    createFutureSnapshot({
-      amount: 500000, // $5,000.00 custodial account statement balance
-      notes: 'Custodial account statement balance, June 2026',
-      approvedBy: 'op_dad',
-      timestamp: '2026-06-15T00:00:00.000Z',
-    })
-  )
-
-  return { ledger, achievementRewardTransferId: achievementReward[0].transferId }
+  return { ledger }
 }
 
-// A handful of approval events so both the Parent Approvals screen and the
+// A couple of approval events so both the Parent Approvals screen and the
 // child's "waiting for approval" list have something real to show out of
-// the box: two historical ones already approved (one plain, one linked via
-// transferId to the reward transfer created above), plus two still
-// 'pending' - dated *today* rather than a fixed date, so a fresh install
-// always shows something to act on regardless of when it's opened.
-function buildSeedApprovals(achievementRewardTransferId) {
+// the box: one historical approved responsibility, one still-pending
+// responsibility dated *today* (so a fresh install always shows something
+// to act on), and one pending money request. None of these touch the
+// ledger until a parent actually approves them, so they never disturb the
+// opening balance above.
+function buildSeedApprovals() {
   const today = new Date().toISOString().slice(0, 10)
 
   return [
@@ -365,16 +287,6 @@ function buildSeedApprovals(achievementRewardTransferId) {
       date: '2026-06-03',
       approvedBy: 'op_dad',
       timestamp: '2026-06-03T19:30:00.000Z',
-    }),
-    createApprovalEvent({
-      kind: APPROVAL_KINDS.ACHIEVEMENT,
-      itemId: 'ach_first_save',
-      status: APPROVAL_STATUSES.APPROVED,
-      date: '2026-06-03',
-      approvedBy: 'op_dad',
-      transferId: achievementRewardTransferId,
-      notes: 'Reward posted to Spend',
-      timestamp: '2026-06-03T18:00:00.000Z',
     }),
     createApprovalEvent({
       kind: APPROVAL_KINDS.RESPONSIBILITY,
@@ -394,7 +306,7 @@ function buildSeedApprovals(achievementRewardTransferId) {
 }
 
 export function buildSeedState() {
-  const { ledger, achievementRewardTransferId } = buildSeedLedger()
+  const { ledger } = buildSeedLedger()
   return {
     version: CURRENT_VERSION,
     settings: SEED_SETTINGS,
@@ -406,7 +318,8 @@ export function buildSeedState() {
     badgeAwards: SEED_BADGE_AWARDS,
     givingCategories: SEED_GIVING_CATEGORIES,
     savingsGoal: SEED_SAVINGS_GOAL,
-    approvals: buildSeedApprovals(achievementRewardTransferId),
+    initialBalances: SEED_INITIAL_BALANCES,
+    approvals: buildSeedApprovals(),
     ledger,
   }
 }
