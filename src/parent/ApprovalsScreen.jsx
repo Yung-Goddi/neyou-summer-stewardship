@@ -4,6 +4,7 @@ import {
   createApprovalEvent,
   getApprovalStatus,
   getLatestEventsForKind,
+  hasEverBeenApproved,
   APPROVAL_KINDS,
   APPROVAL_STATUSES,
 } from '../engine/approvals.js'
@@ -58,6 +59,11 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
   }
 
   function approveAchievement(item) {
+    // Belt-and-suspenders: the button that calls this is already hidden
+    // once an achievement has ever been approved (see the render below),
+    // but guarding here too means there's no path - including a stray
+    // double-click - that pays a "one time only" reward twice.
+    if (hasEverBeenApproved(state.approvals, APPROVAL_KINDS.ACHIEVEMENT, item.id)) return
     try {
       let ledgerEntries = []
       let transferId = null
@@ -237,37 +243,83 @@ export default function ApprovalsScreen({ state, currentOperator, commitApproval
       <Card title="Achievements">
         <ul className="space-y-2">
           {state.achievements.map((item) => {
-            const status = getApprovalStatus(state.approvals, APPROVAL_KINDS.ACHIEVEMENT, item.id, date)
+            // An achievement can only ever be earned once - so once it's
+            // been approved on ANY date, it stays "Approved" regardless of
+            // which date this picker is showing (unlike Responsibilities,
+            // which are meant to be done - and reviewed - fresh every day).
+            const everEarned = hasEverBeenApproved(state.approvals, APPROVAL_KINDS.ACHIEVEMENT, item.id)
+            const status = everEarned ? 'approved' : getApprovalStatus(state.approvals, APPROVAL_KINDS.ACHIEVEMENT, item.id, date)
             return (
-              <li key={item.id} className="flex items-center justify-between gap-3 bg-slate-800 rounded-xl p-3">
-                <div>
-                  <div className="font-medium">{item.title}</div>
-                  <div className="text-slate-400 text-xs">
-                    Reward: {formatCents(item.rewardCents)}
-                    {status === 'pending' && ' · claimed, waiting on you'}
-                  </div>
-                </div>
-                {status === 'approved' && <span className="text-emerald-400 font-semibold text-sm">Approved ✓</span>}
-                {status === 'pending' && (
-                  <div className="flex gap-2">
-                    <button className={buttonClass} onClick={() => approveAchievement(item)}>
-                      Approve{item.rewardCents > 0 ? ' & Pay' : ''}
-                    </button>
-                    <button className={dangerButtonClass} onClick={() => rejectAchievement(item)}>
-                      Reject
-                    </button>
-                  </div>
-                )}
-                {['none', 'rejected', 'withdrawn'].includes(status) && (
-                  <button className={buttonClass} onClick={() => approveAchievement(item)}>
-                    Approve{item.rewardCents > 0 ? ' & Pay Reward' : ''}
-                  </button>
-                )}
-              </li>
+              <AchievementRow
+                key={item.id}
+                item={item}
+                status={status}
+                onApprove={() => approveAchievement(item)}
+                onReject={() => rejectAchievement(item)}
+              />
             )
           })}
         </ul>
       </Card>
     </div>
+  )
+}
+
+// Split out so each row can hold its own "instructions expanded" toggle
+// without a parent-level Set/map of open ids to manage.
+function AchievementRow({ item, status, onApprove, onReject }) {
+  const [showInstructions, setShowInstructions] = useState(false)
+
+  return (
+    <li className="bg-slate-800 rounded-xl p-3 space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="font-medium">
+            {item.icon} {item.title}
+          </div>
+          <div className="text-slate-400 text-xs">
+            Reward: {formatCents(item.rewardCents)}
+            {status === 'pending' && ' · claimed, waiting on you'}
+          </div>
+        </div>
+        {status === 'approved' && <span className="text-emerald-400 font-semibold text-sm">🏅 Approved ✓</span>}
+      </div>
+
+      {status === 'pending' && (
+        <>
+          {item.assessmentInstructions && (
+            <>
+              <button
+                type="button"
+                className={secondaryButtonClass}
+                onClick={() => setShowInstructions((prev) => !prev)}
+              >
+                {showInstructions ? 'Hide' : '📋 Start Mastery Check'}
+              </button>
+              {showInstructions && (
+                <div className="bg-slate-900 border border-slate-700 rounded-lg p-3 text-sm text-slate-300 space-y-1">
+                  <div className="font-semibold text-slate-200">What to test (real cash, no app scoring):</div>
+                  <p>{item.assessmentInstructions}</p>
+                </div>
+              )}
+            </>
+          )}
+          <div className="flex gap-2">
+            <button className={buttonClass} onClick={onApprove}>
+              Approve{item.rewardCents > 0 ? ' & Pay' : ''}
+            </button>
+            <button className={dangerButtonClass} onClick={onReject}>
+              Reject
+            </button>
+          </div>
+        </>
+      )}
+
+      {['none', 'rejected', 'withdrawn'].includes(status) && (
+        <button className={buttonClass} onClick={onApprove}>
+          Approve{item.rewardCents > 0 ? ' & Pay Reward' : ''}
+        </button>
+      )}
+    </li>
   )
 }

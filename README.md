@@ -5,10 +5,9 @@ trustworthy ledger engine, a kid-friendly home screen, and a PIN-gated
 Parent Dashboard sharing one live state.
 
 Phase 0 (project scaffold), Phase 1 (stewardship engine), Phase 2 (Parent
-Dashboard), Phase 3 (child UI), and Phase 3.1 (usability refinements -
-undo, savings goal, badge gallery, real responsibilities, giving
-categories, warmer styling) are complete. Money-practice/education
-screens are intentionally not built yet.
+Dashboard), Phase 3 (child UI), Phase 3.1 (usability refinements), and
+Phase 4 (Money Learning Center) are complete. This is the final major
+feature planned for Summer 2026.
 
 ## Stack
 
@@ -40,6 +39,7 @@ src/
   dev/        Legacy raw engine testing screen (not part of the app flow)
   parent/     Parent Dashboard: PIN gate, operator picker, and five screens
   child/      Child home screen, money requests, task submission
+  child/moneyLearning/  The 7 practice modules + mastery badges (Phase 4)
   AppShell.jsx  Owns root state; switches between child and parent modes
   App.jsx     Renders AppShell
 ```
@@ -70,7 +70,12 @@ src/
   flow (no child involved) appends straight to `'approved'`; the child UI
   appends `'pending'` first — same mechanism, same screen acts on either.
   Approving an achievement with a reward auto-posts the Achievement
-  Reward transfer and links it back via `transferId`.
+  Reward transfer and links it back via `transferId`. An achievement can
+  only ever be earned once - `hasEverBeenApproved` (date-independent,
+  unlike the daily-scoped `getApprovalStatus` responsibilities use) is
+  checked both in the UI (the approve button disappears for good once
+  earned) and again inside the approve handler itself, so there's no path
+  - including a stray double-click - that pays a reward twice.
 - **Money requests** (`src/engine/moneyRequests.js`) are how a child asks
   to Spend, Save Transfer, or Give: `createMoneyRequest` only ever
   appends a `'pending'` approval event (`kind: 'money_request'`) with the
@@ -95,10 +100,11 @@ it live - nothing goes stale moving between them:
 
 **Child mode (default, no PIN)** — `src/child`
 - **Home** — mascot greeting, balances, a savings-goal progress bar (one
-  active goal, progress = the live Save balance), big colorful
-  Spend/Save/Give request buttons, an "I Did My Jobs Today!" button, a
-  "My Badges" button, and a list of what's still waiting for approval -
-  each with an **Undo** button while it's still pending
+  active goal, progress = the live Save balance), a prominent **💰 Money
+  Learning** button, big colorful Spend/Save/Give request buttons, an "I
+  Did My Jobs Today!" button, a "My Badges" button, and a list of what's
+  still waiting for approval - each with an **Undo** button while it's
+  still pending
 - **Money request** — shared screen for Spend/Save Transfer/Giving
   (Giving also picks a category - Church, Charity, etc.); submitting
   only appends a pending approval event, never touches the ledger
@@ -106,8 +112,10 @@ it live - nothing goes stale moving between them:
 - **Tasks** — mark today's responsibilities/achievements done (also just
   appends a pending approval event), each with its own inline Undo while
   still pending
-- **Badges** — Earned/Locked gallery of achievements (icon, description,
-  reward) - a visual board, not a new reward mechanism
+- **Badges** — Earned/Locked gallery of every achievement, general and
+  mastery alike (icon, description, reward) - a visual board, not a new
+  reward mechanism
+- **Money Learning** (Phase 4, `src/child/moneyLearning`) — see below
 - A small link at the bottom switches to the Parent Dashboard
 
 **Parent mode (PIN gated)** — `src/parent`
@@ -118,7 +126,11 @@ PIN gate → operator picker (Dad/Mom) → tabbed dashboard:
 - **Approvals** — a Money Requests section for anything a child asked to
   spend/save/give (Approve posts the real ledger transfer; Reject just
   logs it), plus responsibilities/achievements showing none/pending/
-  approved per day - pending items show "waiting on you" with Approve/Reject
+  approved per day - pending items show "waiting on you" with
+  Approve/Reject. A pending achievement with `assessmentInstructions`
+  (every Phase 4 mastery badge has one) shows a **📋 Start Mastery
+  Check** toggle that reveals what to test in real life before the
+  parent decides - nothing here is app-scored
 - **Money** — weekly split, parent bonus, parent deposit, parent
   withdrawal (warns before overdrawing), record-a-real-world-transaction,
   correction
@@ -127,12 +139,40 @@ PIN gate → operator picker (Dad/Mom) → tabbed dashboard:
   description, reward) editors, giving-category editor, savings-goal
   editor, change PIN, export/import/reset
 
-No money-practice/education screens yet. The illustrated Neyou mascot
-character art (reference sheets provided outside this repo) isn't wired
-in as real assets yet - the child screens use a `neyou.*` color palette
-extracted from those sheets (`tailwind.config.js`) plus an emoji-avatar
-placeholder (`MascotBubble` in `src/child/childUi.jsx`) until the actual
-artwork is added as project files (e.g. dropped into `public/mascot/`).
+The illustrated Neyou mascot character art (reference sheets provided
+outside this repo) isn't wired in as real assets yet - the child screens
+use a `neyou.*` color palette extracted from those sheets
+(`tailwind.config.js`) plus an emoji-avatar placeholder (`MascotBubble`
+in `src/child/childUi.jsx`) until the actual artwork is added as project
+files (e.g. dropped into `public/mascot/`). Coins and bills in Money
+Learning are CSS-drawn for the same reason - no image assets exist yet
+for those either.
+
+## Money Learning (`src/child/moneyLearning`, Phase 4)
+
+"The real world is the classroom. The webpage is the coach's notebook."
+Practice is free and unlimited; only a parent's real-cash judgment can
+ever certify mastery - the app never pays for tapping buttons.
+
+**7 practice modules**, all pure client-side state, none of them ever
+call `commitLedger`/`commitApprovals`:
+Meet the Money, Count Coins, Count Bills, Make This Amount, Can I
+Afford It?, Making Change, and Save/Spend/Give? (scenario judgment, not
+memorization - every answer gets an explanatory, non-punitive response).
+Random problem generation lives in `moneyData.js`, kept free of React so
+it's plain-function testable.
+
+**Mastery badges are not a new system** - they're 8 more rows in the
+same `state.achievements` catalog Phase 2/3 already built, tagged
+`category: 'mastery'` and optionally `moduleId` (which module to
+practice) and `assessmentInstructions` (what a parent should test in
+real life). "I Think I'm Ready!" in `MasteryScreen.jsx` does exactly
+what TasksScreen's "I Did This!" already does - appends a `pending`
+approval event, nothing more. The parent's Approve action (unchanged
+mechanism, `ApprovalsScreen.jsx`) is what actually posts the reward.
+
+No XP, levels, streaks, timers, sounds, leaderboards, or virtual
+currency - this is a learning companion, not a game.
 
 ## Tests
 
@@ -140,13 +180,18 @@ artwork is added as project files (e.g. dropped into `public/mascot/`).
 npm test
 ```
 
-52 Vitest tests cover integer cents math, exact weekly-split summing,
+69 Vitest tests cover integer cents math, exact weekly-split summing,
 linked transfer pairs, negative-balance blocking vs. warning behavior,
-correction reason enforcement, export/import round-tripping, Future
-account snapshot semantics, the approvals append-only log (including the
-money-request payload, kind-wide latest-event lookup, withdrawal, and
-hasEverBeenApproved for badges), money request creation/routing
-(including giving categories), and PIN hashing.
+correction reason enforcement, export/import round-tripping (including
+the state/version migration pattern that heals data saved before a
+field existed), Future account snapshot semantics, the approvals
+append-only log (including the money-request payload, kind-wide
+latest-event lookup, withdrawal, and hasEverBeenApproved for badges),
+money request creation/routing (including giving categories), PIN
+hashing, and the Money Learning practice generators (coin/bill piles
+always sum correctly, multiple-choice options are always valid and
+include the right answer, change-making scenarios always owe positive
+change).
 
 ## Deployment (Netlify)
 

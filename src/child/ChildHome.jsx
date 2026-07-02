@@ -23,6 +23,7 @@ export default function ChildHome({
   onRequestMoney,
   onOpenTasks,
   onOpenBadges,
+  onOpenMoneyLearning,
   onSwitchToParent,
 }) {
   const today = todayISO()
@@ -96,6 +97,13 @@ export default function ChildHome({
           </p>
         </BigCard>
       )}
+
+      <button
+        onClick={onOpenMoneyLearning}
+        className={`${bigButtonClass} w-full bg-gradient-to-r from-neyou-gold to-neyou-teal text-neyou-brownDark flex items-center justify-center gap-2`}
+      >
+        <span className="text-3xl">💰</span> Money Learning
+      </button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {REQUEST_TILES.map((tile) => (

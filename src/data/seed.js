@@ -39,6 +39,16 @@ export const SEED_RESPONSIBILITIES = [
 
 // icon/description are what turns an achievement into a badge on the
 // Badges screen - see src/child/BadgesScreen.jsx.
+//
+// The 8 entries below with category: 'mastery' are Phase 4's Money
+// Learning mastery badges. They work exactly like any other achievement
+// (same catalog, same approval mechanism, same one-time-ever reward) -
+// category/moduleId are just extra fields MasteryScreen.jsx reads to
+// filter this subset and link back to the matching practice module.
+// assessmentInstructions is what ApprovalsScreen shows a parent under
+// "Start Mastery Check" before they decide whether to approve: none of
+// this is app-graded, a parent's real-cash judgment is the only thing
+// that ever certifies mastery.
 export const SEED_ACHIEVEMENTS = [
   {
     id: 'ach_first_save',
@@ -53,6 +63,93 @@ export const SEED_ACHIEVEMENTS = [
     description: 'Complete every responsibility for a full week.',
     icon: '🌟',
     rewardCents: 300,
+  },
+  {
+    id: 'ach_penny_master',
+    title: 'Penny Master',
+    description: 'Name every US coin on sight.',
+    icon: '🥉',
+    rewardCents: 100,
+    category: 'mastery',
+    moduleId: 'meet-the-money',
+    assessmentInstructions:
+      'Show Neyou a penny, nickel, dime, and quarter in any order and ask her to name each one and its value. She should get all four right without help.',
+  },
+  {
+    id: 'ach_coin_counter',
+    title: 'Coin Counter',
+    description: 'Add up a pile of coins correctly.',
+    icon: '🥈',
+    rewardCents: 200,
+    category: 'mastery',
+    moduleId: 'count-coins',
+    assessmentInstructions:
+      'Put a small handful of real coins in front of Neyou (a mix of pennies, nickels, dimes, and quarters) and ask her to count the total out loud. She should get the exact total without help.',
+  },
+  {
+    id: 'ach_coin_expert',
+    title: 'Coin Expert',
+    description: 'Build an exact amount using coins.',
+    icon: '🥇',
+    rewardCents: 300,
+    category: 'mastery',
+    moduleId: 'make-amount',
+    assessmentInstructions:
+      "Ask Neyou to hand you an exact amount using real coins - for example, '65 cents please.' She should build it correctly without help.",
+  },
+  {
+    id: 'ach_bill_builder',
+    title: 'Bill Builder',
+    description: 'Name bills and add them up.',
+    icon: '💵',
+    rewardCents: 200,
+    category: 'mastery',
+    moduleId: 'count-bills',
+    assessmentInstructions:
+      'Show Neyou a mix of real bills ($1, $5, $10, $20) and ask her to name each one and add up the total. She should get it right without help.',
+  },
+  {
+    id: 'ach_money_counter',
+    title: 'Money Counter',
+    description: 'Count coins and bills together.',
+    icon: '💰',
+    rewardCents: 300,
+    category: 'mastery',
+    assessmentInstructions:
+      'Give Neyou a mix of real coins and bills together and ask her to count the total out loud. This combines everything from Coin Counter and Bill Builder.',
+  },
+  {
+    id: 'ach_smart_shopper',
+    title: 'Smart Shopper',
+    description: 'Decide if you can afford something and figure out change.',
+    icon: '🛍',
+    rewardCents: 300,
+    category: 'mastery',
+    moduleId: 'afford-it',
+    assessmentInstructions:
+      "On a real trip to a store, show Neyou a price tag and ask her to decide if she can afford it with the money she has. If she pays with a bill, have her tell you how much change she should get back.",
+  },
+  {
+    id: 'ach_generous_heart',
+    title: 'Generous Heart',
+    description: 'Choose to give and explain why.',
+    icon: '💝',
+    rewardCents: 200,
+    category: 'mastery',
+    moduleId: 'save-spend-give',
+    assessmentInstructions:
+      "Talk with Neyou about a real chance to give - an offering, a gift for someone, or helping someone in need. Ask her to explain why she'd choose to give in that moment.",
+  },
+  {
+    id: 'ach_saving_champion',
+    title: 'Saving Champion',
+    description: 'Explain a savings goal and why it matters.',
+    icon: '🏦',
+    rewardCents: 300,
+    category: 'mastery',
+    moduleId: 'save-spend-give',
+    assessmentInstructions:
+      "Talk with Neyou about her savings goal. Ask her to explain what she's saving for and why she's choosing to wait instead of spending the money now.",
   },
 ]
 

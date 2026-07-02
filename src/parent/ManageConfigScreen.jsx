@@ -66,8 +66,9 @@ export default function ManageConfigScreen({
           { key: 'title', label: 'Title', type: 'text' },
           { key: 'description', label: 'Description', type: 'text' },
           { key: 'rewardCents', label: 'Reward ($)', type: 'money' },
+          { key: 'assessmentInstructions', label: 'How to test it in real life', type: 'text' },
         ]}
-        defaults={{ icon: '🏅', title: '', description: '', rewardCents: '0.00' }}
+        defaults={{ icon: '🏅', title: '', description: '', rewardCents: '0.00', assessmentInstructions: '' }}
         onSave={(items) => updateAchievements(items, 'Achievements updated.')}
       />
 
@@ -214,11 +215,15 @@ function SavingsGoalCard({ goal, updateSavingsGoal, onError }) {
 // the input displays), never as cents - that keeps a freshly-loaded,
 // never-touched row and a hand-edited row in the same shape, so save()
 // can convert every row the same way instead of guessing which rows were
-// edited.
+// edited. Non-money columns default to '' when missing - an item saved
+// before a column existed (e.g. an achievement from before
+// assessmentInstructions was added) would otherwise hand `undefined` to a
+// controlled input.
 function toDraftItem(item, columns) {
   const copy = { ...item }
   columns.forEach((col) => {
     if (col.type === 'money') copy[col.key] = centsToDollars(Number(item[col.key]) || 0)
+    else if (copy[col.key] === undefined) copy[col.key] = ''
   })
   return copy
 }
